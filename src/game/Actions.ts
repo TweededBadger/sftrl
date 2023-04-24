@@ -1,6 +1,7 @@
 import { Player } from "./Player";
 import { Main } from "./Main";
 import { Action, ItemInfo, HexType, ItemType, Weapons } from "./Hex";
+import { startCombatWithNeighbours } from "../utils/combat";
 
 export class Actions {
   constructor(private main: Main) {}
@@ -9,7 +10,6 @@ export class Actions {
     const currentPosition = player.hex.toString();
     // const currentItem = this.main.items.get(currentPosition);
     const currentItem = this.main.items.get(player.hex.toString());
-    console.log({ action, currentItem });
 
     switch (action) {
       case "SWAP_WEAPON":
@@ -66,7 +66,11 @@ export class Actions {
         }
         break;
       case "ATTACK":
-        // Add attack logic here
+        this.main.currentCombat = startCombatWithNeighbours(
+          player,
+          this.main.aiPlayers
+        );
+        this.main.emitCurrentState();
         break;
       case "END_TURN":
         player.actionsTaken = 0;

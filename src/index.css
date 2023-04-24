@@ -14,6 +14,26 @@
   -webkit-text-size-adjust: 100%;
 }
 
+#hex-grid-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+}
+
+#root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  pointer-events: none;
+
+}
+
 a {
   font-weight: 500;
   color: #646cff;
@@ -39,7 +59,7 @@ h1 {
 button {
   border-radius: 8px;
   border: 1px solid transparent;
-  padding: 0.6em 1.2em;
+  padding: 0.5rem 0.3rem;
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;

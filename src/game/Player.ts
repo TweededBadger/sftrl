@@ -1,21 +1,39 @@
-import { Action, Hex, HexType, ItemInfo, movementCosts, Weapons } from "./Hex";
+import { getRandomColor } from "../utils/utils";
+import { Weapons } from "./Combat";
+import { Action, Hex, HexType, ItemInfo, movementCosts } from "./Hex";
 
 export class Player {
   public hex: Hex;
   public reachableHexes: Hex[] = [];
   id: Number;
   alive: boolean = false;
+  public color: string;
   public actionsPerTurn: number = 4;
   public actionsTaken: number = 0;
-  public health: number = 100;
+  public maxHealth: number = 300;
+  public health: number = 300;
   public armour: number = 0;
   public currentWeapon: Weapons = "HANDS";
   public availableActions: Action[] = [];
+  public name: string = "Player";
+  public visibilityMap: Map<string, boolean>;
+  public visibleHexes: Set<string> = new Set();
 
   constructor(startingHex: Hex) {
     this.hex = startingHex;
     this.id = Math.round(Math.random() * 10000);
+    this.name = "Player " + this.id;
+    this.visibilityMap = new Map<string, boolean>();
+    this.color = getRandomColor();
   }
+
+  public reset = (): void => {
+    this.actionsTaken = 0;
+    this.alive = true;
+    this.health = this.maxHealth;
+    this.armour = 0;
+    this.currentWeapon = "HANDS";
+  };
 
   public updateAvailableActions(
     items: Map<string, ItemInfo>,
@@ -45,7 +63,7 @@ export class Player {
     }
 
     const isPlayerInNeighboringHex = players.some((player) =>
-      player.hex.neighbors().some((neighbor) => neighbor.isAdjacent(this.hex))
+      player.hex.neighbors().some((neighbor) => neighbor.equals(this.hex))
     );
     if (isPlayerInNeighboringHex) {
       availableActions.push("ATTACK");
@@ -98,16 +116,13 @@ export class Player {
     );
   }
 
-  moveTo(hex: Hex, type: HexType): void {
-    console.log("Moving to hex", type);
-    const movementCost = movementCosts[type];
-
+  public moveTo(path: Hex[], movementCost: number): void {
+    console.log("Moving to hex", path[path.length - 1]);
     if (this.actionsTaken + movementCost > this.actionsPerTurn) {
       console.log("Not enough actions left");
       return;
     }
     this.actionsTaken += movementCost;
-
-    this.hex = hex;
+    this.hex = path[path.length - 1];
   }
 }
