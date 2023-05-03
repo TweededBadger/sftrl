@@ -27,8 +27,8 @@ export const startCombatWithNeighbours = (
   return new Combat([player, ...opponents]);
 };
 
-export const resolveCombat = (currentCombat: Combat): AIPlayer[] => {
-  const killList: AIPlayer[] = [];
+export const resolveCombat = (currentCombat: Combat): Player[] => {
+  const killList: Player[] = [];
 
   currentCombat.playerStates.forEach((playerState) => {
     playerState.player.health = playerState.health;
@@ -46,7 +46,7 @@ export const resolveCombat = (currentCombat: Combat): AIPlayer[] => {
 };
 
 export const killPlayer = (
-  playerToRemove: AIPlayer,
+  playerToRemove: Player,
   aiPlayers: AIPlayer[]
 ): AIPlayer[] => {
   // Find the index of the playerToRemove in the aiPlayers array

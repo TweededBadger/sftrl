@@ -1,0 +1,8 @@
+name = "cosmic-carnage"
+compatibility_date = "2023-05-03"
+
+main = "workers-site/index.js"
+
+[site]
+bucket = "./dist"
+

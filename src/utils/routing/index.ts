@@ -4,17 +4,12 @@ import { Player } from "../../game/Player";
 import { PriorityQueue } from "../../game/PriorityQueue";
 import { HexMap } from "../types";
 
-export function getRandomWalkableHex(
-  hexTypes: HexMap,
-  gridSize: number
-): Hex {
+export function getRandomWalkableHex(hexTypes: HexMap, gridSize: number): Hex {
   let randomHex: Hex | null = null;
 
   while (!randomHex) {
-    const randomQ =
-      Math.floor(Math.random() * (2 * gridSize + 1)) - gridSize;
-    const randomR =
-      Math.floor(Math.random() * (2 * gridSize + 1)) - gridSize;
+    const randomQ = Math.floor(Math.random() * (2 * gridSize + 1)) - gridSize;
+    const randomR = Math.floor(Math.random() * (2 * gridSize + 1)) - gridSize;
     const candidateHex = new Hex(randomQ, randomR);
     const candidateType = hexTypes.get(candidateHex.toString());
 
@@ -26,17 +21,17 @@ export function getRandomWalkableHex(
   return randomHex;
 }
 
-
 interface FindCheapestPathArgs {
   start: Hex;
   target: Hex;
   hexTypes: HexMap;
+  avoidHexes?: Map<string, boolean>;
 }
 
 export function findCheapestPath(
   args: FindCheapestPathArgs
 ): { path: Hex[]; totalCost: number } {
-  const { start, target, hexTypes } = args;
+  const { start, target, hexTypes, avoidHexes } = args;
 
   const frontier = new PriorityQueue<{ hex: Hex; cost: number }>(
     (a, b) => a.cost < b.cost
@@ -52,18 +47,22 @@ export function findCheapestPath(
     const { hex: current } = frontier.dequeue()!;
 
     if (current.equals(target)) {
-      const path = reconstructPath({cameFrom, current});
+      const path = reconstructPath({ cameFrom, current });
       const totalCost = costSoFar.get(current.toString())!;
       return { path, totalCost };
     }
 
     for (const neighbor of current.neighbors()) {
+      let hexType = hexTypes.get(neighbor.toString());
+      if (avoidHexes?.has(neighbor.toString())) hexType = 'WALL';
+      if (!hexType) continue;
+      const costSoFarNeighbour = costSoFar.get(neighbor.toString()) || 0;
       const newCost =
         costSoFar.get(current.toString())! +
-        movementCosts[hexTypes.get(neighbor.toString())!];
+        movementCosts[hexType];
       if (
         !costSoFar.has(neighbor.toString()) ||
-        newCost < costSoFar.get(neighbor.toString())!
+        newCost < costSoFarNeighbour
       ) {
         costSoFar.set(neighbor.toString(), newCost);
         cameFrom.set(neighbor.toString(), current);
@@ -107,7 +106,6 @@ export function reconstructPath(args: ReconstructPathArgs): Hex[] {
   return path;
 }
 
-
 interface MovePlayerAlongPathArgs {
   player: AIPlayer;
   path: Hex[];
@@ -116,7 +114,10 @@ interface MovePlayerAlongPathArgs {
   mainPlayer: Player;
 }
 
-export function movePlayerAlongPath(args: MovePlayerAlongPathArgs): Hex[] {
+export function movePlayerAlongPath(
+  args: MovePlayerAlongPathArgs,
+  maxStepsTaken: number = Infinity
+): Hex[] {
   const { player, path, hexTypes, aiPlayers, mainPlayer } = args;
 
   const isNextHexOccupied = (nextHex: Hex) => {
@@ -124,7 +125,7 @@ export function movePlayerAlongPath(args: MovePlayerAlongPathArgs): Hex[] {
       aiPlayers.some(
         (otherPlayer) =>
           otherPlayer !== player && otherPlayer.hex.equals(nextHex)
-      ) || player.hex.equals(mainPlayer.hex)
+      ) || mainPlayer.hex.equals(nextHex)
     );
   };
 
@@ -132,6 +133,10 @@ export function movePlayerAlongPath(args: MovePlayerAlongPathArgs): Hex[] {
   let actionsTaken = player.actionsTaken;
 
   for (const nextHex of path) {
+    if (stepsTaken >= maxStepsTaken) {
+      break;
+    }
+
     const nextHexType = hexTypes.get(nextHex.toString());
     if (!nextHexType) break;
     const nextHexCost = movementCosts[nextHexType];
@@ -149,8 +154,5 @@ export function movePlayerAlongPath(args: MovePlayerAlongPathArgs): Hex[] {
   }
 
   player.actionsTaken = actionsTaken;
-  return path.slice(stepsTaken) ;
-//   return { updatedPlayer: player, remainingPath: path.slice(stepsTaken) };
+  return path.slice(stepsTaken);
 }
-
-

@@ -1,15 +1,7 @@
+import { Pattern } from "../utils/procGen";
 import { Hex, HexType } from "./Hex";
 
-export type StructureElement = {
-  type: HexType;
-  position: { q: number; r: number };
-};
 
-export type StructureDefinition = {
-  center: { q: number; r: number };
-  dimensions: { q: number; r: number };
-  elements: StructureElement[];
-};
 
 export type HexRotation = 0 | 1 | 2 | 3 | 4 | 5;
 
@@ -74,8 +66,19 @@ export class Structure {
   }
 }
 
+export type StructureElement = {
+  type: HexType;
+  position: { q: number; r: number };
+};
+
+export type StructureDefinition = {
+  center?: { q: number; r: number };
+  dimensions?: { q: number; r: number };
+  elements: StructureElement[];
+};
+
 export const houseDefinition: StructureDefinition = {
-  center: { q: -1, r: 2 },
+  center: { q: 0, r: 0 },
   dimensions: { q: 5, r: 5 },
   elements: [
     // First row
@@ -102,32 +105,36 @@ export const houseDefinition: StructureDefinition = {
     { type: "WALL", position: { q: -3, r: 4 } },
     { type: "WALL", position: { q: -2, r: 4 } },
     { type: "WALL", position: { q: -1, r: 4 } },
-
-    // Second row
-    // { type: "WALL", position: { q: -1, r: -1 } },
-    // { type: "WALL", position: { q: 0, r: -1 } },
-
-    // // Third row
-    // { type: "WALL", position: { q: -2, r: 0 } },
-    // { type: "DOOR", position: { q: -1, r: 0 } },
-    // { type: "WALL", position: { q: 0, r: 0 } },
-
-    // // Fourth row
-    // { type: "WALL", position: { q: -2, r: 1 } },
-    // { type: "ROAD", position: { q: -1, r: 1 } },
-    // { type: "ROAD", position: { q: 0, r: 1 } },
-    // { type: "WALL", position: { q: 1, r: 1 } },
-
-    // // Fifth row
-    // { type: "WALL", position: { q: -1, r: 2 } },
-    // { type: "ROAD", position: { q: 0, r: 2 } },
-    // { type: "WALL", position: { q: 1, r: 2 } },
-
-    // // Sixth row
-    // { type: "WALL", position: { q: 0, r: 3 } },
-    // { type: "WALL", position: { q: 1, r: 3 } },
-
-    // // Seventh row
-    // { type: "WALL", position: { q: 1, r: 4 } },
   ],
 };
+
+
+
+export const wall1: StructureDefinition = {
+  center: { q: 0, r: 0 },
+  dimensions: { q: 2, r: 2 },
+  elements: [
+    // First row
+    { type: "ROAD", position: { q: 0, r: 0 } },
+    { type: "WALL", position: { q: 1, r: 0 } },
+    { type: "ROAD", position: { q: -1, r: 1 } },
+    { type: "WALL", position: { q: 0, r: 1 } },
+  ],
+};
+
+
+export const wall2: StructureDefinition = {
+  center: { q: 0, r: 0 },
+  dimensions: { q: 2, r: 2 },
+  elements: [
+    // First row
+    { type: "WALL", position: { q: 0, r: 0 } },
+    { type: "WALL", position: { q: 1, r: 0 } },
+    { type: "ROAD", position: { q: -1, r: 1 } },
+    { type: "ROAD", position: { q: 0, r: 1 } },
+  ],
+};
+
+
+
+

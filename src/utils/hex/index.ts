@@ -1,4 +1,5 @@
 import { blocksLineOfSite, Hex, HexType } from "../../game/Hex";
+import { iterateGrid } from "./drawing";
 
 interface AxialToCubeArgs {
   hex: Hex;
@@ -80,4 +81,16 @@ export function calculateVisibleHexes(
     }
 
     return visibleHexes;
+  }
+
+
+  export function populateDeathHexMap(center: Hex, radius: number, gridSize: number): Map<string, boolean> {
+    const deathHexMap = new Map<string, boolean>();
+  
+    for (const hex of iterateGrid(gridSize)) {
+        const isInZone = center.distance(hex) > radius;
+        deathHexMap.set(hex.toString(), isInZone);
+    }
+
+    return deathHexMap;
   }

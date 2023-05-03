@@ -11,35 +11,41 @@ import {
   ItemInfo,
   ItemType,
   movementCosts,
+  hexTypes as hexTypesList,
 } from "./Hex";
 import { Player } from "./Player";
 import { AIPlayer } from "./AIPlayer";
 import { Actions } from "./Actions";
-import { PriorityQueue } from "./PriorityQueue";
-import {
-  HexRotation,
-  houseDefinition,
-  Structure,
-  StructureDefinition,
-} from "./Structure";
 import { Combat, CombatState, Weapons } from "./Combat";
 import { loadWeaponsIcons } from "../components/WeaponIcon";
 import { killPlayer, resolveCombat } from "../utils/combat";
 import { HexMap } from "../utils/types";
-import { addStructure } from "../utils/building";
-import { findCheapestPath, getRandomWalkableHex, movePlayerAlongPath } from "../utils/routing";
-import { generateItems } from "../utils/items";
-import { determineTargetPosition, getPlayerHexInViewDistance } from "../utils/aiPlayer";
-import { generateHexTypes, generateRandomRoads, getHexTypeFromNoise } from "../utils/procGen";
+import {
+  findCheapestPath,
+  getRandomWalkableHex,
+  movePlayerAlongPath,
+} from "../utils/routing";
+import { generateItems, placeItemAtHex } from "../utils/items";
+import {
+  determineTargetPosition,
+  takeActionIfAvailable,
+} from "../utils/aiPlayer";
+import { calculateVisibleHexes, populateDeathHexMap } from "../utils/hex";
+import { actionCosts, performAction } from "../utils/actions";
+import {
+  convertToHexMap,
+  generateStructures,
+  structurePatterns,
+} from "../utils/procGen/structureWaveFunction";
+import { pixelToHex } from "../utils/hex/drawing";
 
 const thresholds: Record<number, HexType> = {
   0.4: "SEA",
-  0.45: "SAND",
-  0.65: "GRASS",
-  0.72: "WOODS",
-  0.75: "DEEP_WOODS",
+  // 0.55: "SAND",
+  0.55: "GRASS",
+  0.65: "WOODS",
+  0.7: "DEEP_WOODS",
 };
-
 
 type Debug = {
   showGridCoords: boolean;
@@ -49,18 +55,22 @@ type Debug = {
 
 export class Main {
   private gridSize: number;
-  public hexTypes: HexMap;
-  public items: Map<string, ItemInfo>;
+  public canvas: HTMLCanvasElement;
+  private zoneRadius: number;
+  public hexTypes: HexMap = new Map();
+  public deathMap: Map<string, boolean> = new Map();
+  public zoneCenter: Hex = new Hex(0, 0);
+  public items: Map<string, ItemInfo> = new Map();
   public aiPlayers: AIPlayer[] = [];
   private numberOfAIPlayers: number = 30;
   private viewDistance: number = 4;
-  private finder: Finder;
-  private player: Player;
+  private player: Player = new Player(new Hex(0, 0));
   private hexGrid: HexGrid;
   private actions: Actions;
   public currentCombat: Combat | undefined;
   public turnNumber: number = 0;
-  public gameState: "NOT_PLAYING" | "PLAYING" | "GAME_OVER" = "NOT_PLAYING";
+  public gameState: "NOT_PLAYING" | "PLAYING" | "GAME_OVER" | "NOT_INIT" =
+    "NOT_INIT";
   events: EventEmitter;
   public weaponImages: Record<Weapons, HTMLImageElement> = {} as Record<
     Weapons,
@@ -72,45 +82,84 @@ export class Main {
     showAIplayertarget: false,
   };
 
-  constructor() {
+  constructor(canvas: HTMLCanvasElement) {
     EventEmitter;
-    this.gridSize = 35;
-    this.hexTypes = generateHexTypes({gridSize:this.gridSize, thresholds});
-    this.hexTypes = generateRandomRoads(8,this.hexTypes, this.gridSize);
-    this.items = generateItems(this.hexTypes, itemAmounts, this.gridSize);
+    this.gridSize = 30;
+    this.zoneRadius = this.gridSize;
+    this.canvas = canvas;
+    // const structureMap = generateStructures({
+    //   gridSize: this.gridSize,
+    //   patterns: structurePatterns,
+    // });
+    // this.hexTypes = convertToHexMap({
+    //   structureMap,
+    //   patterns: structurePatterns,
+    //   gridSize: this.gridSize,
+    // });
+    // this.deathMap = new Map();
+    // // this.hexTypes = generateRandomRoads(8, this.hexTypes, this.gridSize);
+    // // this.hexTypes = generateHexTypesOld({ gridSize: this.gridSize, thresholds });
 
-    for (let i = 0; i < 10; i++) {
-      const rotation = (Math.floor(Math.random() * 5) + 1) as HexRotation;
-      addStructure({
-        structure:houseDefinition, rotation, gridSize: this.gridSize, hexTypes: this.hexTypes
+    // // for (let i = 0; i < 10; i++) {
+    // //   // const rotation = (Math.floor(Math.random() * 5) + 1) as HexRotation;
+    // //   addStructure({
+    // //     structure: wall2,
+    // //     rotation: 0,
+    // //     gridSize: this.gridSize,
+    // //     hexTypes: this.hexTypes,
+    // //   });
+    // // }
 
-      });
-    }
+    // // this.items  = new Map();
+    // this.items = generateItems(this.hexTypes, itemAmounts, this.gridSize);
 
-    // this.walkableMatrix = this.generateWalkableMatrix(
+    // // this.walkableMatrix = this.generateWalkableMatrix(
+    // //   this.hexTypes,
+    // //   this.gridSize
+    // // );
+
+    // this.zoneCenter = getRandomWalkableHex(this.hexTypes, this.gridSize);
+
+    // const playerStartPosition = getRandomWalkableHex(
     //   this.hexTypes,
     //   this.gridSize
     // );
 
-    this.finder = new PF.AStarFinder();
+    // const player = new Player(playerStartPosition);
+    // this.player = player;
 
-    const player = new Player(new Hex(0, 0));
-    this.player = player;
+    // for (let i = 0; i < this.numberOfAIPlayers; i++) {
+    //   let startPosition: Hex;
+    //   let validPosition: boolean;
 
-    for (let i = 0; i < this.numberOfAIPlayers; i++) {
-      const startPosition = getRandomWalkableHex(this.hexTypes, this.gridSize);
-      // const targetPosition = this.getRandomWalkableHexInViewDistance(
-      //   startPosition,
-      //   this.viewDistance
-      // );
-      // console.log(startPosition);
-      this.aiPlayers.push(
-        new AIPlayer(startPosition, startPosition, this.viewDistance)
-      );
-    }
+    //   let count = 0;
+
+    //   do {
+    //     startPosition = getRandomWalkableHex(this.hexTypes, this.gridSize);
+    //     validPosition = true;
+
+    //     for (const aiPlayer of [this.player, ...this.aiPlayers]) {
+    //       const distance = startPosition.distance(aiPlayer.hex);
+    //       if (distance <= 3) {
+    //         validPosition = false;
+    //         break;
+    //       }
+    //     }
+    //     count += 1;
+    //     if (count > 100) {
+    //       console.log("Could not find valid position for AI player");
+    //       break;
+    //     }
+    //   } while (!validPosition);
+
+    //   this.aiPlayers.push(
+    //     new AIPlayer(startPosition, startPosition, this.viewDistance)
+    //   );
+    // }
+
     this.events = new EventEmitter();
 
-    this.hexGrid = new HexGrid(this, this.viewDistance, () => {
+    this.hexGrid = new HexGrid(this, this.viewDistance, this.canvas, () => {
       this.render();
     });
     this.actions = new Actions(this);
@@ -122,44 +171,61 @@ export class Main {
       Weapons,
       HTMLImageElement
     >;
-    console.log(this.weaponImages);
   }
 
   public reset() {
     // Reset hex types, items, and AI players
-    this.hexTypes = generateHexTypes({gridSize:this.gridSize, thresholds});
-    this.hexTypes = generateRandomRoads(8,this.hexTypes, this.gridSize);
-    this.items = generateItems(this.hexTypes, itemAmounts, this.gridSize);
+    // this.hexTypes = generateHexTypes({ gridSize: this.gridSize, thresholds });
+    // this.hexTypes = generateRandomRoads(8, this.hexTypes, this.gridSize);
+    // this.items = generateItems(this.hexTypes, itemAmounts, this.gridSize);
     this.aiPlayers = [];
+    this.zoneRadius = this.gridSize;
+    const structureMap = generateStructures({
+      gridSize: this.gridSize,
+      patterns: structurePatterns,
+    });
+    this.hexTypes = convertToHexMap({
+      structureMap,
+      patterns: structurePatterns,
+      gridSize: this.gridSize,
+    });
+    this.deathMap = new Map();
+    this.items = generateItems(this.hexTypes, itemAmounts, this.gridSize);
 
-    // Regenerate structures
-    for (let i = 0; i < 10; i++) {
-      const rotation = (Math.floor(Math.random() * 5) + 1) as HexRotation;
-      addStructure({
-        structure:houseDefinition, rotation, gridSize: this.gridSize, hexTypes: this.hexTypes
+    this.zoneCenter = getRandomWalkableHex(this.hexTypes, this.gridSize);
 
-      });
-    }
+    const playerStartPosition = getRandomWalkableHex(
+      this.hexTypes,
+      this.gridSize
+    );
 
-    // Regenerate walkable matrix and update finder
-    // this.walkableMatrix = this.generateWalkableMatrix(
-    //   this.hexTypes,
-    //   this.gridSize
-    // );
-    this.finder = new PF.AStarFinder();
+    const player = new Player(playerStartPosition);
+    this.player = player;
 
-    // Reset player position
-    const playerStart = new Hex(0, 0);
-    this.player.hex = playerStart;
-    this.player.reset();
-
-    // Regenerate AI players
     for (let i = 0; i < this.numberOfAIPlayers; i++) {
-      const startPosition = getRandomWalkableHex(this.hexTypes, this.gridSize);
-      // const targetPosition = this.getRandomWalkableHexInViewDistance(
-      //   startPosition,
-      //   this.viewDistance
-      // );
+      let startPosition: Hex;
+      let validPosition: boolean;
+
+      let count = 0;
+
+      do {
+        startPosition = getRandomWalkableHex(this.hexTypes, this.gridSize);
+        validPosition = true;
+
+        for (const aiPlayer of [this.player, ...this.aiPlayers]) {
+          const distance = startPosition.distance(aiPlayer.hex);
+          if (distance <= 3) {
+            validPosition = false;
+            break;
+          }
+        }
+        count += 1;
+        if (count > 100) {
+          console.log("Could not find valid position for AI player");
+          break;
+        }
+      } while (!validPosition);
+
       this.aiPlayers.push(
         new AIPlayer(startPosition, startPosition, this.viewDistance)
       );
@@ -198,7 +264,6 @@ export class Main {
 
       if (this.player.health <= 0) {
         this.gameState = "GAME_OVER";
-        console.log("GAME OVER");
       }
       this.emitCurrentState();
       this.render();
@@ -211,7 +276,14 @@ export class Main {
     return combatState;
   }
 
-  public killPlayer(playerToRemove: AIPlayer) {
+  public killPlayer(playerToRemove: Player) {
+    if (playerToRemove.currentWeapon !== "HANDS")
+      placeItemAtHex(
+        playerToRemove.hex,
+        playerToRemove.currentWeapon,
+        this.hexTypes,
+        this.items
+      );
 
     this.aiPlayers = killPlayer(playerToRemove, this.aiPlayers);
 
@@ -293,6 +365,7 @@ export class Main {
   // }
 
   public emitCurrentState(): void {
+    console.log("emitCurrentState");
     this.events.emit("currentState", {
       numAlivePlayers: this.numAlivePlayers,
       numPlayers: this.numPlayer,
@@ -375,16 +448,27 @@ export class Main {
   private update(): void {
     this.hexGrid.setVisibleHexes(this.hexTypes, this.player);
     this.hexGrid.revealHexes(this.player);
+    this.deathMap = populateDeathHexMap(
+      this.zoneCenter,
+      this.zoneRadius,
+      this.gridSize
+    );
     // this.resolveAIPlayerCombat();
-    console.log(this.numAlivePlayers);
 
     this.player.updateAvailableActions(this.items, this.aiPlayers);
-    this.player.setReachableHexes(this.hexTypes);
+    this.player.setReachableHexes(this.hexTypes, this.deathMap);
 
     for (const aiPlayer of this.aiPlayers) {
       this.hexGrid.setVisibleHexes(this.hexTypes, aiPlayer);
       this.hexGrid.revealHexes(aiPlayer);
-      aiPlayer.setReachableHexes(this.hexTypes);
+      aiPlayer.setReachableHexes(this.hexTypes, this.deathMap);
+
+      if (this.deathMap.get(aiPlayer.hex.toString())) {
+        aiPlayer.health = aiPlayer.health - 5;
+      }
+      if (aiPlayer.health <= 0) {
+        this.killPlayer(aiPlayer);
+      }
     }
 
     this.emitCurrentState();
@@ -412,10 +496,12 @@ export class Main {
     );
     this.hexGrid.renderPlayer(this.player, this.player.hex);
     for (const aiPlayer of this.aiPlayers) {
-      this.hexGrid.renderAIPlayer(aiPlayer, this.player.hex);
+      this.hexGrid.renderAIPlayer(aiPlayer, this.player);
     }
 
     this.hexGrid.renderReachableArea(this.player, this.player);
+
+    this.hexGrid.drawZone(this.zoneCenter, this.zoneRadius, this.player);
     // this.hexGrid.drawMovableArea(this.player);
 
     // for (const player of this.aiPlayers) {
@@ -488,22 +574,57 @@ export class Main {
     this.emitCurrentState();
   }
 
+  runEndOfTurnWork(): void {
+    this.turnNumber++;
+    for (const aiPlayer of this.aiPlayers) {
+      // aiPlayer.setReachableHexes(this.hexTypes);
+      this.performAiPlayerActions(aiPlayer);
+      aiPlayer.actionsTaken = 0;
+    }
+
+    if (this.deathMap.get(this.player.hex.toString())) {
+      this.player.health = this.player.health - 5;
+    }
+
+    this.checkIfPlayerIsDead();
+
+    if (this.zoneRadius > 2 && this.turnNumber % 2 === 0)
+      this.zoneRadius = this.zoneRadius - 1;
+  }
+
+  checkIfPlayerIsDead(): void {
+    if (this.player.health <= 0) {
+      this.gameState = "GAME_OVER";
+
+      this.emitCurrentState();
+      this.render();
+    }
+  }
+
   public performAction(action: Action): void {
-    this.actions.performAction(action, this.player);
+    const actionOutcome = performAction(
+      action,
+      this.player,
+      this.items,
+      this.aiPlayers
+    );
+
+    if (actionOutcome?.combat) this.currentCombat = actionOutcome.combat;
+
     // this.player.updateAvailableActions(this.items, this.aiPlayers);
 
     // this.render();
     // this.emitCurrentState();
 
-    this.resolveAIPlayerCombat();
+    // this.resolveAIPlayerCombat();
 
-    for (const aiPlayer of this.aiPlayers) {
-      // aiPlayer.setReachableHexes(this.hexTypes);
-      this.movePlayer(aiPlayer);
-      aiPlayer.actionsTaken = 0;
+    if (action === "END_TURN") {
+      this.runEndOfTurnWork();
     }
 
     this.update();
+
+    this.emitCurrentState();
     this.render();
   }
 
@@ -541,42 +662,115 @@ export class Main {
     return !player.targetHex.equals(newTarget);
   }
 
-  private movePlayer(player: AIPlayer): void {
+  private performAiPlayerActions(player: AIPlayer): void {
     if (!player.alive) return;
 
-    const newTargetPosition = determineTargetPosition({
-      player: player,
-      aiPlayers: [this.player, ...this.aiPlayers],
+    player.visibleHexes = calculateVisibleHexes(
+      player.hex,
+      this.viewDistance,
+      this.hexTypes
+    );
+
+    while (player.actionsTaken < player.actionsPerTurn) {
+      player.updateAvailableActions(this.items, [
+        this.player,
+        ...this.aiPlayers,
+      ]);
+
+      // Perform action with takeActionIfAvailable
+      const actionTaken = takeActionIfAvailable(player, this.items);
+
+      // Perform an ATTACK action and resolve the resulting combat
+      if (
+        player.availableActions.includes("ATTACK") &&
+        player.actionsTaken + actionCosts["ATTACK"] <= player.actionsPerTurn
+      ) {
+        if (player.hex.distance(this.player.hex) === 1) {
+          const actionOutcome = performAction(
+            "ATTACK",
+            this.player,
+            this.items,
+            this.aiPlayers
+          );
+
+          if (actionOutcome?.combat) {
+            this.currentCombat = actionOutcome.combat;
+
+            player.actionsTaken = player.actionsPerTurn;
+          }
+        } else {
+          const combatResult = performAction(
+            "ATTACK",
+            player,
+            this.items,
+            this.aiPlayers
+          );
+          if (combatResult && combatResult.combat) {
+            combatResult.combat.simulateCombat();
+            const killList = resolveCombat(combatResult.combat);
+            killList.forEach((player) => {
+              this.killPlayer(player);
+            });
+          }
+          player.actionsTaken += actionCosts["ATTACK"];
+        }
+      } else {
+        const newTargetPosition = determineTargetPosition({
+          player: player,
+          aiPlayers: [this.player, ...this.aiPlayers],
           viewDistance: this.viewDistance,
           hexTypes: this.hexTypes,
           hexGrid: this.hexGrid,
           gridSize: this.gridSize,
-      // getRandomWalkableHexTowardsLeastExploredArea: someFunction,
-    });
+          items: this.items,
+          deathMap: this.deathMap,
+          // getRandomWalkableHexTowardsLeastExploredArea: someFunction,
+        });
 
-    if (this.hasTargetChanged(player, newTargetPosition)) {
-      const { path, totalCost } = findCheapestPath({
-        start: player.hex,
-        target: newTargetPosition,
-        hexTypes: this.hexTypes,
-      });
-      const pathWithoutFirst = path.slice(1);
-      player.currentPath = pathWithoutFirst;
-      player.targetHex = newTargetPosition;
-    }
+        if (this.hasTargetChanged(player, newTargetPosition)) {
+          const avoidHexes = new Map<string, boolean>();
+          this.aiPlayers.forEach((player) => {
+            avoidHexes.set(player.hex.toString(), true);
+          });
 
-    if (player.currentPath && player.currentPath.length > 0) {
-      player.currentPath = movePlayerAlongPath(
-        {
-          player: player,
-          path: player.currentPath,
-          hexTypes: this.hexTypes,
-          aiPlayers: this.aiPlayers,
-          mainPlayer: this.player
+          const { path, totalCost } = findCheapestPath({
+            start: player.hex,
+            target: newTargetPosition,
+            hexTypes: this.hexTypes,
+            avoidHexes,
+          });
+          const pathWithoutFirst = path.slice(1);
+          player.currentPath = pathWithoutFirst;
+          player.targetHex = newTargetPosition;
 
+          if (totalCost > 10000) {
+            player.currentPath = null;
+            player.targetHex = player.hex;
+          }
         }
-      );
+
+        if (player.currentPath && player.currentPath.length > 0) {
+          // Move 1 space along the currentPath
+          const newPath = movePlayerAlongPath(
+            {
+              player: player,
+              path: player.currentPath,
+              hexTypes: this.hexTypes,
+              aiPlayers: this.aiPlayers,
+              mainPlayer: this.player,
+            },
+            1 // maxStepsTaken set to 1
+          );
+          if (newPath.length === player.currentPath.length) break;
+          player.currentPath = newPath;
+        } else {
+          break;
+        }
+      }
     }
+
+    // Reset the actionsTaken for the next turn
+    player.actionsTaken = 0;
   }
 
   // private determineTargetPosition(player: AIPlayer): Hex {
@@ -650,7 +844,6 @@ export class Main {
   // }
 
   public start(): void {
-    this.gameState = "PLAYING";
     this.turnNumber = 0;
 
     this.hexGrid.canvas.addEventListener("click", (event) => {
@@ -663,10 +856,15 @@ export class Main {
       }
     });
 
+    // this.reset();
+
     this.update();
 
     this.render();
-    this.emitCurrentState();
+    this.gameState = "NOT_PLAYING";
+    setTimeout(() => {
+      this.emitCurrentState();
+    }, 100);
   }
 
   // private getRandomWalkableHexInViewDistance(
@@ -779,7 +977,7 @@ export class Main {
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
     const { offsetX, offsetY } = this.hexGrid.calculateOffset(this.player.hex);
-    const hex = this.hexGrid.pixelToHex(x - offsetX, y - offsetY);
+    const hex = pixelToHex(x - offsetX, y - offsetY, this.hexGrid.hexSize);
 
     const hexKey = hex.toString();
     const type = this.hexTypes.get(hexKey);
@@ -790,14 +988,12 @@ export class Main {
       reachableHex.equals(hex)
     );
 
-    console.log({ reachable });
-
     if (reachable) {
       // Calculate the shortest path and its total movement cost
       const { path, totalCost } = findCheapestPath({
         start: this.player.hex,
         target: hex,
-        hexTypes: this.hexTypes
+        hexTypes: this.hexTypes,
       });
 
       if (path && totalCost) {
@@ -925,7 +1121,6 @@ export class Main {
   //         x / scaleFactor,
   //         y / scaleFactor
   //       );
-  //       // console.log({ x, y, noiseValue });
   //       // const noiseValue = 0;
   //       const hexType = getHexTypeFromNoise({noiseValue, thresholds});
   //       const hexKey = hex.toString();
@@ -985,7 +1180,6 @@ export class Main {
   // }
 
   // private addRandomRoad(hexTypes: Map<string, HexType>): Map<string, HexType> {
- 
 
   //   let hexStart = getRandomWalkableHex(this.hexTypes, this.gridSize);
   //   let hexEnd = getRandomWalkableHex(this.hexTypes, this.gridSize);

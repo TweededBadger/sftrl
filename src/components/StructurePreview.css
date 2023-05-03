@@ -1,0 +1,42 @@
+.structure-preview-container {
+    position: relative;
+    display: inline-block;
+    margin: 30px;
+}
+
+.structure-preview-button {
+    position: absolute;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.5em;
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.structure-preview-button.active {
+    color: rgba(0, 0, 255, 0.8);
+}
+
+.structure-preview-button-up {
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.structure-preview-button-right {
+    top: 50%;
+    right: -20px;
+    transform: translateY(-50%);
+}
+
+.structure-preview-button-left {
+    top: 50%;
+    left: -20px;
+    transform: translateY(-50%);
+}
+
+.structure-preview-button-down {
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+}

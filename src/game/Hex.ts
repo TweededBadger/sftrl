@@ -1,13 +1,4 @@
 // Add the HexType enum
-export type HexType =
-  | "GRASS"
-  | "ROAD"
-  | "SEA"
-  | "WOODS"
-  | "SAND"
-  | "DEEP_WOODS"
-  | "DOOR"
-  | "WALL";
 
 const house = [
   { type: "WALL", position: { q: 0, r: -1 } },
@@ -38,24 +29,17 @@ export type ItemInfo = {
   type: ItemType;
   amount?: number;
   chestContents?: any;
+  isWeapon?: boolean;
 };
 
 export const itemAmounts: Record<ItemType, number> = {
-  // HEALTH: 5,
-  // CHEST: 10,
-  // ROCK: 10,
-  // SCISSORS: 5,
-  // CLEAVER: 3,
-  // SWORD: 2,
-  // ARMOUR: 10,
-
-  HEALTH: 0,
+  HEALTH: 20,
   CHEST: 0,
-  ROCK: 0,
-  SCISSORS: 0,
-  CLEAVER: 0,
-  SWORD: 0,
-  ARMOUR: 0,
+  ROCK: 10,
+  SCISSORS: 10,
+  CLEAVER: 5,
+  SWORD: 3,
+  ARMOUR: 10,
 };
 
 export const hexTypes: HexType[] = [
@@ -65,6 +49,9 @@ export const hexTypes: HexType[] = [
   "WOODS",
   "SAND",
   "DEEP_WOODS",
+  "DOOR",
+  "WALL",
+
 ];
 
 export const blocksLineOfSite: HexType[] = ["DEEP_WOODS", "WALL", "DOOR"];
@@ -75,11 +62,12 @@ export const movementCosts: Record<HexType, number> = {
   GRASS: 2,
   ROAD: 1,
   SEA: 10000,
-  WOODS: 3,
-  SAND: 3,
-  DEEP_WOODS: 3,
+  WOODS: 2,
+  SAND: 2,
+  DEEP_WOODS: 2,
   WALL: 10000,
   DOOR: 1,
+  DEATH: 10000,
 };
 export const hexDirections: [number, number][] = [
   [1, 0],
@@ -89,6 +77,17 @@ export const hexDirections: [number, number][] = [
   [-1, 1],
   [0, 1],
 ];
+
+export type HexType =
+  | "GRASS"
+  | "ROAD"
+  | "SEA"
+  | "WOODS"
+  | "SAND"
+  | "DEEP_WOODS"
+  | "DOOR"
+  | "WALL"
+  | "DEATH";
 
 
 export class Hex {
@@ -262,6 +261,10 @@ export class Hex {
     return new Hex(this.q + other.q, this.r + other.r);
   }
 
+  public dot(other: Hex): number {
+    return this.q * other.q + this.r * other.r;
+  }
+
   public normalize(): Hex {
     const magnitude = Math.sqrt(this.q * this.q + this.r * this.r);
     return new Hex(this.q / magnitude, this.r / magnitude);
@@ -269,5 +272,29 @@ export class Hex {
 
   public scale(scalar: number): Hex {
     return new Hex(this.q * scalar, this.r * scalar);
+  }
+
+  public getNeighborByOffset(offsetQ: number, offsetR: number): Hex {
+    return new Hex(this.q + offsetQ, this.r + offsetR);
+  }
+
+  public  cubeRing(radius: number): Hex[]  {
+
+    const center = this;
+    const results: Hex[] = [];
+  
+    if (radius === 0) {
+      return [center];
+    }
+  
+    let hex = center.add(new Hex(hexDirections[4][0], hexDirections[4][1]).scale(radius));
+  
+    for (let i = 0; i < 6; i++) {
+      for (let j = 0; j < radius; j++) {
+        results.push(hex);
+        hex = hex.add(new Hex(hexDirections[i][0], hexDirections[i][1]));
+      }
+    }
+    return results;
   }
 }

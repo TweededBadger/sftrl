@@ -17,7 +17,6 @@ export const CombatDisplay: React.FC<CombatDisplayProps> = ({
   const actionsContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    console.log(actionsContainerRef.current?.scrollTop);
     if (actionsContainerRef.current) {
       actionsContainerRef.current.scrollTop =
         actionsContainerRef.current.scrollHeight;
@@ -29,10 +28,10 @@ export const CombatDisplay: React.FC<CombatDisplayProps> = ({
       <div key={index} className={styles["player-details"]}>
         <div className={styles["player-name"]}>{state.player.name}</div>
         <div className={styles["player-stat"]}>
-          <BsFillShieldFill /> {state.armour}
+          <BsFillShieldFill /> {Math.round(state.armour)}
         </div>
         <div className={styles["player-stat"]}>
-          <FaHeart /> {state.health}
+          <FaHeart /> {Math.round(state.health)}
         </div>
         <div className={styles["player-stat"]}>
           <WeaponIcon weapon={state.player.currentWeapon} />

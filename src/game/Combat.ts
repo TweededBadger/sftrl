@@ -9,13 +9,12 @@ type WeaponAttributes = {
   speed: number;
   critChance: number;
 };
-
-const weaponStats: Record<Weapons, WeaponAttributes> = {
-  CLEAVER: { damage: 40, speed: 3, critChance: 0.1 },
-  SWORD: { damage: 30, speed: 5, critChance: 0.15 },
-  SCISSORS: { damage: 20, speed: 7, critChance: 0.2 },
-  ROCK: { damage: 15, speed: 2, critChance: 0.25 },
-  HANDS: { damage: 10, speed: 11, critChance: 0.3 },
+export const weaponStats: Record<Weapons, WeaponAttributes> = {
+  CLEAVER: { damage: 20, speed: 0.6, critChance: 0.1 },
+  SWORD: { damage: 15, speed: 0.8, critChance: 0.3 },
+  SCISSORS: { damage: 10, speed: 1, critChance: 0.2 },
+  ROCK: { damage: 8, speed: 0.8, critChance: 0.5 },
+  HANDS: { damage: 5, speed: 1, critChance: 0.3 },
 };
 
 interface PlayerState {
@@ -52,9 +51,8 @@ export class Combat {
       health: player.health,
       armour: player.armour,
     }));
-    this.weaponImages = {} as Record<Weapons, string>;
+    // this.weaponImages = {} as Record<Weapons, string>;
   }
-
 
   public simulateCombat(): void {
     while (!this.combatOver) {
@@ -84,7 +82,7 @@ export class Combat {
 
       const isCritical = Math.random() < critChance;
       const damageMultiplier = isCritical ? 2 : 1;
-      const hitChance = speed / 10; // You can adjust the divisor to control hit/miss chances
+      const hitChance = speed; // You can adjust the divisor to control hit/miss chances
 
       const didHit = Math.random() < hitChance;
 
@@ -94,6 +92,9 @@ export class Combat {
         // Apply damage to the defender, considering armour reduction
         const effectiveDamage = Math.max(0, damage - defenderState.armour);
         defenderState.health -= effectiveDamage;
+        if (defenderState.armour > 0) {
+          defenderState.armour = defenderState.armour / 2;
+        }
 
         // Add the action to the actions array
         this.actions.push({

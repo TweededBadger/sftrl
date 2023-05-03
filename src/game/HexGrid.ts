@@ -1,15 +1,7 @@
-import { loadIcons } from "../components/WeaponIcon";
 import { calculateVisibleHexes } from "../utils/hex";
+import { iterateGrid, renderHex } from "../utils/hex/drawing";
 import { AIPlayer } from "./AIPlayer";
-import {
-  blocksLineOfSite,
-  Hex,
-  HexType,
-  ItemInfo,
-  ItemType,
-  movementCosts,
-  SpriteType,
-} from "./Hex";
+import { Hex, HexType, ItemInfo, movementCosts, SpriteType } from "./Hex";
 import { Main } from "./Main";
 import { Player } from "./Player";
 import { SpriteInfo, SpriteManager } from "./SpriteManager";
@@ -26,34 +18,26 @@ const spriteInfo: Record<SpriteType, SpriteInfo> = {
   ENEMY: { x: 64 * 1, y: 64 * 8, width: 64, height: 64 },
 };
 
-const typeColors: Record<HexType, string> = {
-  GRASS: "#00D04E",
-  ROAD: "#808080",
-  SEA: "#0000FF",
-  WOODS: "#019437",
-  DEEP_WOODS: "#00451A",
-  SAND: "#FFFF00",
-  WALL: "#FF0000",
-  DOOR: "#FF00FF",
-};
-
 type Point = { x: number; y: number };
 
 export class HexGrid {
   public hexSize: number;
   private viewDistance: number;
-  public canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   // private visibilityMap: Map<string, boolean>;
   // private visibleHexes: Set<string> = new Set();
   private spriteManager: SpriteManager;
   public main: Main;
+  public canvas: HTMLCanvasElement;
 
-  constructor(main: Main, viewDistance: number, onLoaded: () => void) {
+  constructor(
+    main: Main,
+    viewDistance: number,
+    canvas: HTMLCanvasElement,
+    onLoaded: () => void
+  ) {
     this.hexSize = 30;
-    this.canvas = document.getElementById(
-      "hex-grid-canvas"
-    ) as HTMLCanvasElement;
+    this.canvas = canvas;
     this.ctx = this.canvas.getContext("2d") as CanvasRenderingContext2D;
     // this.visibilityMap = new Map();
     this.viewDistance = viewDistance;
@@ -84,77 +68,6 @@ export class HexGrid {
     return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
   }
 
-  private desaturateColor(
-    color: string,
-    desaturationFactor: number = 0.3
-  ): string {
-    const greyOutFactor = 0.5;
-    const hexColor = color.slice(1);
-    const rgb = parseInt(hexColor, 16);
-    const r = ((rgb >> 16) & 255) * greyOutFactor;
-    const g = ((rgb >> 8) & 255) * greyOutFactor;
-    const b = (rgb & 255) * greyOutFactor;
-
-    const maxColorValue = Math.max(r, g, b);
-    const minColorValue = Math.min(r, g, b);
-    const lightness = (maxColorValue + minColorValue) / 2;
-
-    const newR = r + (lightness - r) * desaturationFactor;
-    const newG = g + (lightness - g) * desaturationFactor;
-    const newB = b + (lightness - b) * desaturationFactor;
-
-    return `rgb(${Math.round(newR)}, ${Math.round(newG)}, ${Math.round(newB)})`;
-  }
-
-  // Render a single hex cell
-  private renderHex(
-    hex: Hex,
-    offsetX: number,
-    offsetY: number,
-    hexType: HexType,
-    greyOut: boolean
-  ): void {
-    const { x, y } = hex.toPixel(this.hexSize);
-    const centerX = x + offsetX;
-    const centerY = y + offsetY;
-
-    const points = this.calculateHexPoints(centerX, centerY, this.hexSize);
-    this.ctx.beginPath();
-
-    this.ctx.setLineDash([5, 10]);
-
-    this.ctx.lineWidth = 1;
-    this.ctx.moveTo(points[0].x, points[0].y);
-
-    for (let i = 1; i < points.length; i++) {
-      this.ctx.lineTo(points[i].x, points[i].y);
-    }
-
-    this.ctx.closePath();
-    this.ctx.fillStyle = greyOut
-      ? this.desaturateColor(typeColors[hexType], 0.9)
-      : typeColors[hexType];
-    this.ctx.fill();
-    this.ctx.strokeStyle = "black";
-    this.ctx.stroke();
-  }
-
-  // Calculate the points of a hexagon
-  private calculateHexPoints(
-    centerX: number,
-    centerY: number,
-    size: number
-  ): { x: number; y: number }[] {
-    const points = [];
-    for (let i = 0; i < 6; i++) {
-      const angle = ((2 * Math.PI) / 6) * i + Math.PI / 6; // Start at 30 degrees
-      const x = centerX + size * Math.cos(angle);
-      const y = centerY + size * Math.sin(angle);
-      points.push({ x, y });
-    }
-    return points;
-  }
-
   public calculateOffset(playerHex: Hex): { offsetX: number; offsetY: number } {
     const playerPixel = playerHex.toPixel(this.hexSize);
 
@@ -163,61 +76,6 @@ export class HexGrid {
 
     return { offsetX, offsetY };
   }
-
-  public *iterateGrid(gridSize: number): Generator<Hex> {
-    for (let q = -gridSize; q <= gridSize; q++) {
-      for (
-        let r = Math.max(-gridSize, -q - gridSize);
-        r <= Math.min(gridSize, -q + gridSize);
-        r++
-      ) {
-        const hex = new Hex(q, r);
-        yield hex;
-      }
-    }
-  }
-
-  // public calculateVisibleHexes(
-  //   playerHex: Hex,
-  //   viewDistance: number,
-  //   hexTypes: Map<string, HexType>
-  // ): Set<string> {
-  //   const visibleHexes = new Set<string>();
-
-  //   // Add the player's hex to the visible hexes
-  //   visibleHexes.add(playerHex.toString());
-
-  //   const angleStep = 1;
-
-  //   for (let angle = 0; angle < 360; angle += angleStep) {
-  //     const dx = Math.cos((angle * Math.PI) / 180);
-  //     const dy = Math.sin((angle * Math.PI) / 180);
-
-  //     let currentHex = playerHex;
-
-  //     for (let distance = 0; distance <= viewDistance + 1; distance++) {
-  //       const x = playerHex.q + dx * distance;
-  //       const y = playerHex.r + dy * distance;
-  //       const z = -(x + y);
-  //       const candidateHex = Hex.round(new Hex(x, y));
-
-  //       if (!currentHex.equals(candidateHex)) {
-  //         currentHex = candidateHex;
-
-  //         const hexKey = currentHex.toString();
-  //         const hexType = hexTypes.get(hexKey);
-
-  //         visibleHexes.add(hexKey);
-
-  //         if (hexType && blocksLineOfSite.includes(hexType)) {
-  //           break;
-  //         }
-  //       }
-  //     }
-  //   }
-
-  //   return visibleHexes;
-  // }
 
   public renderGrid(
     gridSize: number,
@@ -228,9 +86,9 @@ export class HexGrid {
   ): void {
     const { offsetX, offsetY } = this.calculateOffset(player.hex);
 
-    for (const hex of this.iterateGrid(gridSize)) {
+    for (const hex of iterateGrid(gridSize)) {
       const hexKey = hex.toString();
-      const type = hexTypes.get(hexKey);
+      const type = hexTypes.get(hexKey) || "WALL";
       const isVisible = this.main.debug.renderWholeMap
         ? true
         : player.visibilityMap.get(hexKey);
@@ -239,8 +97,18 @@ export class HexGrid {
         : player.hex.distance(hex) <= this.viewDistance &&
           player.visibleHexes.has(hexKey);
 
+      const isOutsideZone = this.main.deathMap.get(hexKey);
+
       if (isVisible && type) {
-        this.renderHex(hex, offsetX, offsetY, type, !isWithinViewDistance);
+        renderHex(
+          this.ctx,
+          hex,
+          offsetX,
+          offsetY,
+          this.hexSize,
+          type,
+          !isWithinViewDistance
+        );
 
         // Check if there's an item at the current hex and render it
         const item = items.get(hexKey);
@@ -267,6 +135,18 @@ export class HexGrid {
 
           this.ctx.fillText(text, pixel.x + offsetX, pixel.y + offsetY);
         }
+      }
+
+      if (isOutsideZone) {
+        renderHex(
+          this.ctx,
+          hex,
+          offsetX,
+          offsetY,
+          this.hexSize,
+          "DEATH",
+          false
+        );
       }
     }
   }
@@ -323,10 +203,18 @@ export class HexGrid {
     player: Player,
     viewDistance: number
   ): void {
-    if (!player.visibleHexes.has(hex.toString())) return;
+    if (
+      !player.visibleHexes.has(hex.toString()) &&
+      !this.main.debug.renderWholeMap
+    )
+      return;
 
     // Check if the hex is within the view distance
-    if (hex.distance(player.hex) > viewDistance) return;
+    if (
+      hex.distance(player.hex) > viewDistance &&
+      !this.main.debug.renderWholeMap
+    )
+      return;
 
     const ctx = this.ctx;
     const { x, y } = hex.toPixel(this.hexSize);
@@ -346,22 +234,22 @@ export class HexGrid {
     ctx.restore();
   }
 
-  public renderAIPlayer(player: AIPlayer, playerHex: Hex): void {
+  public renderAIPlayer(aiPlayer: AIPlayer, player: Player): void {
     if (
       !this.main.debug.renderWholeMap &&
-      !player.visibleHexes.has(player.hex.toString())
+      !player.visibleHexes?.has(aiPlayer.hex.toString())
     )
       return;
 
-    const { offsetX, offsetY } = this.calculateOffset(playerHex);
+    const { offsetX, offsetY } = this.calculateOffset(player.hex);
 
     const isWithinViewDistance =
       this.main.debug.renderWholeMap ||
-      playerHex.distance(player.hex) <= this.viewDistance;
+      player.hex.distance(aiPlayer.hex) <= this.viewDistance;
 
     if (!isWithinViewDistance) return;
 
-    const { x, y } = player.hex.toPixel(this.hexSize);
+    const { x, y } = aiPlayer.hex.toPixel(this.hexSize);
     const centerX = x + offsetX;
     const centerY = y + offsetY;
 
@@ -386,7 +274,7 @@ export class HexGrid {
     this.ctx.fillRect(healthBarX, healthBarY, healthBarWidth, healthBarHeight);
 
     // Draw foreground (green) bar
-    const healthPercentage = player.health / player.maxHealth;
+    const healthPercentage = aiPlayer.health / aiPlayer.maxHealth;
     this.ctx.fillStyle = "green";
     this.ctx.fillRect(
       healthBarX,
@@ -404,17 +292,21 @@ export class HexGrid {
       healthBarY - 0.5,
       healthBarWidth + 1,
       healthBarHeight + 1
-    ); 
+    );
 
-
-    const weaponImage = this.main.weaponImages[player.currentWeapon];
-  if (weaponImage) {
-    const weaponIconSize = this.hexSize ;
-    const weaponIconX = centerX - weaponIconSize / 2;
-    const weaponIconY = centerY - this.hexSize - weaponIconSize;
-    this.ctx.drawImage(weaponImage, weaponIconX, weaponIconY, weaponIconSize, weaponIconSize);
-  } 
-
+    const weaponImage = this.main.weaponImages[aiPlayer.currentWeapon];
+    if (weaponImage) {
+      const weaponIconSize = this.hexSize;
+      const weaponIconX = centerX - weaponIconSize / 2;
+      const weaponIconY = centerY - this.hexSize - weaponIconSize;
+      this.ctx.drawImage(
+        weaponImage,
+        weaponIconX,
+        weaponIconY,
+        weaponIconSize,
+        weaponIconSize
+      );
+    }
   }
 
   public setVisibleHexes = (hexTypes: Map<string, HexType>, player: Player) => {
@@ -517,11 +409,6 @@ export class HexGrid {
     referencePlayer: Player,
     color: string = "red"
   ): void {
-    // const reachableHexes = this.getReachableHexes(
-    //   player,
-    //   player.hex,
-    //   player.actionsPerTurn - player.actionsTaken
-    // );
     const reachableHexes = player.reachableHexes;
     const boundaryPoints: { x: number; y: number }[] = [];
 
@@ -554,6 +441,41 @@ export class HexGrid {
         );
 
         if (!isReachableNeighbor) {
+          const currentCorner = corners[i];
+          const nextCorner = corners[(i + 1) % corners.length];
+
+          ctx.beginPath();
+          ctx.moveTo(currentCorner.x, currentCorner.y);
+          ctx.lineTo(nextCorner.x, nextCorner.y);
+          ctx.stroke();
+        }
+      });
+    });
+  }
+
+  public drawZone(
+    center: Hex,
+    radius: number,
+    referencePlayer: Player,
+    color: string = "red"
+  ): void {
+    const { offsetX, offsetY } = this.calculateOffset(referencePlayer.hex);
+
+    const { ctx } = this;
+    const zoneHexes = center.cubeRing(radius);
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+
+    zoneHexes.forEach((hex) => {
+      const { x, y } = hex.toPixel(this.hexSize);
+      const corners = this.getCorners(x + offsetX, y + offsetY);
+      const neighbors = hex.neighbors();
+
+      neighbors.forEach((neighbor, i) => {
+        const isOutsideZone = center.distance(neighbor) > radius;
+
+        if (isOutsideZone) {
           const currentCorner = corners[i];
           const nextCorner = corners[(i + 1) % corners.length];
 
@@ -610,11 +532,5 @@ export class HexGrid {
 
   public clearCanvas(): void {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-  }
-
-  public pixelToHex(x: number, y: number): Hex {
-    const q = ((x * Math.sqrt(3)) / 3 - y / 3) / this.hexSize;
-    const r = (y * 2) / 3 / this.hexSize;
-    return new Hex(q, r).round();
   }
 }
