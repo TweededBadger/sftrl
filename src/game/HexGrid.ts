@@ -6,7 +6,7 @@ import { Main } from "./Main";
 import { Player } from "./Player";
 import { SpriteInfo, SpriteManager } from "./SpriteManager";
 
-const spriteInfo: Record<SpriteType, SpriteInfo> = {
+export const spriteInfo: Record<SpriteType, SpriteInfo> = {
   HEALTH: { x: 64 * 2, y: 0, width: 64, height: 64 },
   CHEST: { x: 64 * 4, y: 64 * 6, width: 64, height: 64 },
   ROCK: { x: 64 * 1, y: 64 * 2, width: 64, height: 64 },
@@ -16,6 +16,14 @@ const spriteInfo: Record<SpriteType, SpriteInfo> = {
   ARMOUR: { x: 64 * 1, y: 64 * 1, width: 64, height: 64 },
   PLAYER: { x: 64 * 0, y: 64 * 8, width: 64, height: 64 },
   ENEMY: { x: 64 * 1, y: 64 * 8, width: 64, height: 64 },
+  BASE_TILE: { x: 128 * 2, y: 128 * 1, width: 128, height: 128 },
+  DOOR: { x: 128 * 1, y: 128 * 1, width: 128, height: 128 },
+  WALL: { x: 128 * 3, y: 128 * 2, width: 128, height: 128 },
+  WALL_END: { x: 128 * 3, y: 128 * 2, width: 128, height: 128 },
+  WALL_CORNER: { x: 128 * 0, y: 128 * 2, width: 128, height: 128 },
+  WALL_CORNER_TIGHT: { x: 128 * 2, y: 128 * 2, width: 128, height: 128 },
+  WALL_CORNER_THREE: { x: 128 * 1, y: 128 * 2, width: 128, height: 128 },
+  WINDOW: { x: 128 * 0, y: 128 * 3, width: 128, height: 128 },
 };
 
 type Point = { x: number; y: number };

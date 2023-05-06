@@ -65,6 +65,9 @@ interface GenerateHexTypesOldArgs {
 
 import * as PF from "pathfinding";
 import { getRandomWalkableHex } from "../routing";
+import { HexInfo, HexMap } from "../types";
+import { HexRotation } from "../../game/Structure";
+import { iterateGrid } from "../hex/drawing";
 
 interface AddRoadArgs {
   hexTypes: Map<string, HexType>;
@@ -109,103 +112,182 @@ interface AddRandomRoadArgs {
   gridSize: number;
 }
 
-export function addRandomRoad(args: AddRandomRoadArgs): Map<string, HexType> {
-  const { hexTypes, gridSize } = args;
+// export function addRandomRoad(args: AddRandomRoadArgs): Map<string, HexType> {
+//   const { hexTypes, gridSize } = args;
 
-  const hexStart = getRandomWalkableHex(hexTypes, gridSize);
-  const hexEnd = getRandomWalkableHex(hexTypes, gridSize);
+//   const hexStart = getRandomWalkableHex(hexTypes, gridSize);
+//   const hexEnd = getRandomWalkableHex(hexTypes, gridSize);
 
-  const newHexTypes = addRoad({ hexTypes, hexStart, hexEnd, gridSize });
+//   const newHexTypes = addRoad({ hexTypes, hexStart, hexEnd, gridSize });
 
-  return newHexTypes;
-}
+//   return newHexTypes;
+// }
 
-export function generateRandomRoads(
-  numRoads: number,
-  hexTypes: Map<string, HexType>,
-  gridSize: number
-): Map<string, HexType> {
-  let newHexTypes = hexTypes;
-  for (let i = 0; i < numRoads; i++) {
-    newHexTypes = addRandomRoad({
-      hexTypes: newHexTypes,
-      gridSize,
-    });
-  }
+// export function generateRandomRoads(
+//   numRoads: number,
+//   hexTypes: Map<string, HexType>,
+//   gridSize: number
+// ): Map<string, HexType> {
+//   let newHexTypes = hexTypes;
+//   for (let i = 0; i < numRoads; i++) {
+//     newHexTypes = addRandomRoad({
+//       hexTypes: newHexTypes,
+//       gridSize,
+//     });
+//   }
 
-  return newHexTypes;
-}
+//   return newHexTypes;
+// }
 
 interface GenerateHexTypesArgs {
   gridSize: number;
   hexTypes: HexType[];
 }
 
-// export function generateHexTypesSingle(args: GenerateHexTypesArgs): Map<string, HexType> {
-//   const { gridSize, hexTypes } = args;
+export function generateHexTypesSingle(args: GenerateHexTypesArgs): HexMap {
+  const { gridSize, hexTypes } = args;
 
-//   const waveFunction = initializeWaveFunctionSingle({
-//     gridSize,
-//     hexTypes,
-//   });
+  const waveFunction = initializeWaveFunctionSingle({
+    gridSize,
+    hexTypes,
+  });
 
-//   const hexTypesMap = new Map<string, HexType>();
+  const hexTypesMap: HexMap = new Map();
 
-//   while (waveFunction.size > 0) {
-//     const lowestEntropyCell = findLowestEntropyCellSingle({ waveFunction });
+  while (waveFunction.size > 0) {
+    const lowestEntropyCell = findLowestEntropyCellSingle({ waveFunction });
 
-//     if (lowestEntropyCell === null) {
-//       break;
-//     }
+    if (lowestEntropyCell === null) {
+      break;
+    }
 
-//     const possibleHexTypes = waveFunction.get(lowestEntropyCell);
+    const possibleHexTypes = waveFunction.get(lowestEntropyCell);
 
-//     if (possibleHexTypes === undefined || possibleHexTypes.size === 0) {
-//       throw new Error('Inconsistent wave function state');
-//     }
+    if (possibleHexTypes === undefined || possibleHexTypes.size === 0) {
+      // throw new Error("Inconsistent wave function state");
+      // break;
+      console.log("Inconsistent wave function state");
 
-//     const selectedHexType = chooseRandomHexTypeSingle(Array.from(possibleHexTypes));
-//     hexTypesMap.set(lowestEntropyCell, selectedHexType);
-//     waveFunction.delete(lowestEntropyCell);
+      hexTypesMap.set(lowestEntropyCell, {
+        type: "EMPTY",
+        rotation: 0,
+      });
+      waveFunction.delete(lowestEntropyCell);
 
-//     updateWaveFunctionSingle({
-//       waveFunction,
-//       selectedCell: lowestEntropyCell,
-//       selectedHexType,
-//       patterns,
-//     });
-//   }
+      // return hexTypesMap;
+    } else {
+      const selectedHexType = chooseRandomHexTypeSingle(possibleHexTypes);
+      hexTypesMap.set(lowestEntropyCell, selectedHexType);
+      waveFunction.delete(lowestEntropyCell);
 
-//   return hexTypesMap;
-// }
+      updateWaveFunctionSingle({
+        waveFunction,
+        selectedCell: lowestEntropyCell,
+        selectedHexType,
+        patterns,
+      });
 
-function chooseRandomHexTypeSingle(): HexType {
-  const hexTypes = startPatterns.map((pattern) => pattern.center);
-  const randomIndex = Math.floor(Math.random() * hexTypes.length);
-  return hexTypes[randomIndex];
+      const finished = !!waveFunction.get(lowestEntropyCell);
+
+      // console.log("finished", finished);
+    }
+  }
+
+  return hexTypesMap;
+}
+
+function chooseRandomHexTypeSingle(
+  possibleHexTypes: Set<HexTypeWithRotation>
+): HexTypeWithRotation {
+  const hexTypesArray = Array.from(possibleHexTypes);
+  const hexTypesCount = hexTypesArray.length;
+
+  const randomIndex = Math.floor(Math.random() * hexTypesCount);
+  return hexTypesArray[randomIndex];
 }
 
 export type Pattern = {
   center: HexType;
   neighbors: HexType[];
-  structureId?: string;
+  canConnect: HexType[];
+  connectionEnds: HexRotation[];
 };
 
-const startPatterns: Pattern[] = [
-  // { center: 'GRASS', neighbors: ['GRASS', 'ROAD', 'WOODS', 'SAND'] },
-  // { center: 'ROAD', neighbors: ['ROAD', 'GRASS', "SEA", 'WOODS', "DOOR"] },
-  // { center: 'SEA', neighbors: ['SEA', 'SAND'] },
-  // { center: 'WOODS', neighbors: ['WOODS', 'GRASS', "ROAD", 'DEEP_WOODS'] },
-  // { center: 'SAND', neighbors: ['SAND', 'SEA', 'GRASS'] },
-  // { center: 'DEEP_WOODS', neighbors: ['DEEP_WOODS', 'WOODS'] },
-  // { center: 'DOOR', neighbors: ['DOOR', 'WALL', 'GRASS', "ROAD"] },
-  // { center: 'WALL', neighbors: ['WALL', 'DOOR'] },
+const patterns: Pattern[] = [
+  {
+    center: "WALL",
+    neighbors: ["EMPTY"],
+    canConnect: [
+      "WALL",
+      "WALL_CORNER",
+      "WALL_CORNER_THREE",
+      // "DOOR",
+      "WINDOW",
+    ],
+    connectionEnds: [1, 4],
+  },
 
-  { center: "WOODS", neighbors: ["WOODS", "WALL", "ROAD"] },
-  { center: "WALL", neighbors: ["WALL", "ROAD", "WOODS"] },
-  { center: "ROAD", neighbors: ["ROAD", "WALL", "WOODS"] },
-  // { center: 'WOODS', neighbors: ['WOODS', 'GRASS'] },
-  // { center: 'GRASS', neighbors: ['WALL', 'GRASS', "ROAD"] },
+  // {
+  //   center: "DOOR",
+  //   neighbors: ["EMPTY", "WALL_CORNER_THREE"],
+  //   canConnect: ["WALL"],
+  //   connectionEnds: [1, 4],
+  // },
+
+  {
+    center: "WINDOW",
+    neighbors: ["EMPTY"],
+    canConnect: ["WALL", "WALL_CORNER", "WALL_CORNER_THREE"],
+    connectionEnds: [1, 4],
+  },
+  // {
+  //   center: "WALL_END",
+  //   neighbors: ["EMPTY", "WALL_CORNER"],
+  //   canConnect: ["WALL", "WALL_CORNER"],
+  //   connectionEnds: [1],
+  // },
+  {
+    center: "WALL_CORNER",
+    neighbors: ["EMPTY"],
+    canConnect: ["WALL", "WINDOW"],
+    connectionEnds: [2, 4],
+  },
+  {
+    center: "WALL_CORNER_THREE",
+    neighbors: ["EMPTY"],
+    canConnect: [
+      "WALL",
+      "WINDOW",
+      // "WALL_CORNER_THREE",
+      // "DOOR"
+    ],
+    connectionEnds: [0, 2, 4],
+  },
+  // {
+  //   center: "WALL_CORNER_TIGHT",
+  //   neighbors: [
+  //     "EMPTY",
+  //     "WALL_CORNER",
+  //     "WALL_CORNER_TIGHT",
+  //     "WALL",
+  //     "WALL_END",
+  //   ],
+  //   canConnect: ["WALL", "WALL_END", "WALL_CORNER"],
+  //   connectionEnds: [4, 5],
+  // },
+  {
+    center: "EMPTY",
+    neighbors: [
+      "WALL",
+      "EMPTY",
+      "WALL_CORNER",
+      "WALL_CORNER_THREE",
+      // "DOOR",
+      "WINDOW",
+    ],
+    canConnect: [],
+    connectionEnds: [],
+  },
 ];
 
 // Add the structure patterns to the existing patterns array
@@ -222,13 +304,6 @@ const startPatterns: Pattern[] = [
 //   structureId: "wall1-wall2",
 // };
 
-const patterns = [
-  ...startPatterns,
-  // ...wall1Patterns,
-  // ...wall2Patterns,
-  // connectionPattern,
-];
-
 // const waveFunction = initializeWaveFunction({
 //   gridSize: 5,
 //   hexTypes: hexTypes,
@@ -241,79 +316,139 @@ interface InitializeWaveFunctionArgs {
   hexTypes: HexType[];
 }
 
+type HexTypeWithRotation = {
+  type: HexType;
+  rotation: HexRotation;
+  position: Hex;
+};
+
+type WaveFunction = Map<string, Set<HexTypeWithRotation>>;
+
 function initializeWaveFunctionSingle(
   args: InitializeWaveFunctionArgs
-): Map<string, Set<HexType>> {
+): WaveFunction {
   const { gridSize, hexTypes } = args;
 
-  const waveFunction = new Map<string, Set<HexType>>();
+  const waveFunction: WaveFunction = new Map();
 
-  for (let q = -gridSize; q <= gridSize; q++) {
-    for (let r = -gridSize; r <= gridSize; r++) {
-      const hex = new Hex(q, r);
+  // for (let q = 0; q <= gridSize; q++) {
+  //   for (let r = 0; r <= gridSize; r++) {
+  //     const hex = new Hex(q, r);
 
-      const possibleHexTypes = getCompatibleHexTypesSingle({
-        waveFunction,
-        position: hex,
-        patterns: patterns,
-      });
+  //     // const possibleHexTypes = getCompatibleHexTypesSingle({
+  //     //   waveFunction,
+  //     //   position: hex,
+  //     //   patterns: patterns,
+  //     // });
 
-      if (possibleHexTypes.size > 0) {
-        waveFunction.set(hex.toString(), possibleHexTypes);
+  //     // if (possibleHexTypes.size > 0) {
+  //     const possibleHexTypesWithRotations = new Set<{
+  //       type: HexType;
+  //       rotation: HexRotation;
+  //     }>();
+
+  //     hexTypes.forEach((hexType) => {
+  //       for (let rotation: HexRotation = 0; rotation <= 5; rotation++) {
+  //         possibleHexTypesWithRotations.add({
+  //           type: hexType,
+  //           rotation: rotation as HexRotation,
+  //         });
+  //       }
+  //     });
+
+  //     waveFunction.set(hex.toString(), possibleHexTypesWithRotations);
+  //   }
+  //   // }
+  // }
+
+  for (const hex of iterateGrid(gridSize)) {
+    const hexKey = hex.toString();
+    const allHexTypesWithRotations = new Set<HexTypeWithRotation>();
+
+    hexTypes.forEach((hexType) => {
+      for (let rotation: HexRotation = 0; rotation <= 5; rotation++) {
+        allHexTypesWithRotations.add({
+          type: hexType,
+          rotation: rotation as HexRotation,
+          position: hex,
+        });
       }
-    }
+    });
+
+    waveFunction.set(hexKey, allHexTypesWithRotations);
   }
 
-  for (let q = -gridSize; q <= gridSize; q++) {
-    for (
-      let r = Math.max(-gridSize, -q - gridSize);
-      r <= Math.min(gridSize, -q + gridSize);
-      r++
-    ) {
-      const hex = new Hex(q, r);
-      const hexKey = hex.toString();
-      waveFunction.set(hexKey, new Set(hexTypes));
-    }
-  }
+  // for (let q = 0; q <= gridSize; q++) {
+  //   for (
+  //     let r = Math.max(-gridSize, -q - gridSize);
+  //     r <= Math.min(gridSize, -q + gridSize);
+  //     r++
+  //   ) {
+  //     const hex = new Hex(q, r);
+  //     const hexKey = hex.toString();
+  //     const allHexTypesWithRotations = new Set<{
+  //       type: HexType;
+  //       rotation: HexRotation;
+  //     }>();
+
+  //     hexTypes.forEach((hexType) => {
+  //       for (let rotation: HexRotation = 0; rotation <= 5; rotation++) {
+  //         allHexTypesWithRotations.add({
+  //           type: hexType,
+  //           rotation: rotation as HexRotation,
+  //         });
+  //       }
+  //     });
+
+  //     waveFunction.set(hexKey, allHexTypesWithRotations);
+  //   }
+  // }
 
   return waveFunction;
 }
-
 interface GetCompatibleHexTypesArgs {
-  waveFunction: Map<string, Set<HexType>>;
+  waveFunction: WaveFunction;
   position: Hex;
   patterns: Pattern[];
 }
 
 function getCompatibleHexTypesSingle(
   args: GetCompatibleHexTypesArgs
-): Set<HexType> {
+): Set<HexTypeWithRotation> {
   const { waveFunction, position, patterns } = args;
-  const compatibleHexTypes = new Set<HexType>();
+  const compatibleHexTypes = new Set<HexTypeWithRotation>();
 
-  for (const hexType of waveFunction.get(position.toString()) ||
-    new Set<HexType>()) {
-    const pattern = patterns.find((p) => p.center === hexType);
+  for (const hexTypeWithRotation of waveFunction.get(position.toString()) ||
+    new Set<HexTypeWithRotation>()) {
+    const pattern = patterns.find((p) => p.center === hexTypeWithRotation.type);
 
     if (pattern) {
       const neighborPositions = position.neighbors();
       const isCompatible = neighborPositions.some((neighborPosition, index) => {
-        const neighborHexTypes = waveFunction.get(neighborPosition.toString());
+        const neighborHexTypesWithRotation = waveFunction.get(
+          neighborPosition.toString()
+        );
         const expectedNeighborType = pattern.neighbors[index];
 
-        return (
-          neighborHexTypes &&
-          neighborHexTypes.has(expectedNeighborType) &&
-          checkCompatibilitySingle({
-            hexA: hexType,
-            hexB: expectedNeighborType,
-            patterns,
-          })
-        );
+        if (neighborHexTypesWithRotation) {
+          for (const neighborTypeWithRotation of neighborHexTypesWithRotation) {
+            if (neighborTypeWithRotation.type === expectedNeighborType) {
+              const compatibility = checkCompatibilitySingle({
+                hexA: hexTypeWithRotation,
+                hexB: neighborTypeWithRotation,
+                patterns,
+              });
+
+              if (compatibility) {
+                return true;
+              }
+            }
+          }
+        }
       });
 
       if (isCompatible) {
-        compatibleHexTypes.add(hexType);
+        compatibleHexTypes.add(hexTypeWithRotation);
       }
     }
   }
@@ -322,9 +457,9 @@ function getCompatibleHexTypesSingle(
 }
 
 interface UpdateWaveFunctionArgs {
-  waveFunction: Map<string, Set<HexType>>;
+  waveFunction: WaveFunction;
   selectedCell: string;
-  selectedHexType: HexType;
+  selectedHexType: HexTypeWithRotation;
   patterns: Pattern[];
 }
 
@@ -333,19 +468,21 @@ function updateWaveFunctionSingle(args: UpdateWaveFunctionArgs): void {
   const selectedHex = Hex.hexFromString(selectedCell);
   const neighbors = selectedHex.neighbors();
 
-  for (const neighbor of neighbors) {
+  for (const [index, neighbor] of neighbors.entries()) {
     const neighborKey = neighbor.toString();
 
     if (waveFunction.has(neighborKey)) {
       const possibleNeighborHexTypes = waveFunction.get(neighborKey);
-      const remainingPossibleHexTypes = new Set<HexType>();
+      const remainingPossibleHexTypes = new Set<HexTypeWithRotation>();
 
       if (possibleNeighborHexTypes) {
         for (const possibleNeighborHexType of possibleNeighborHexTypes) {
+          const side = index as HexRotation;
           if (
             checkCompatibilitySingle({
               hexA: selectedHexType,
               hexB: possibleNeighborHexType,
+              side,
               patterns,
             })
           ) {
@@ -360,31 +497,57 @@ function updateWaveFunctionSingle(args: UpdateWaveFunctionArgs): void {
 }
 
 interface CheckCompatibilityArgs {
-  hexA: HexType;
-  hexB: HexType;
+  hexA: HexTypeWithRotation;
+  hexB: HexTypeWithRotation;
+  side: HexRotation;
   patterns: Pattern[];
 }
 
 function checkCompatibilitySingle(args: CheckCompatibilityArgs): boolean {
-  const { hexA, hexB, patterns } = args;
+  const { hexA, hexB, side, patterns } = args;
 
-  const patternA = patterns.find((pattern) => pattern.center === hexA);
-  const patternB = patterns.find((pattern) => pattern.center === hexB);
+  const patternA = patterns.find((pattern) => pattern.center === hexA.type);
+  const patternB = patterns.find((pattern) => pattern.center === hexB.type);
 
   if (!patternA || !patternB) {
     return false;
   }
 
-  const compatibleNeighborsA = patternA.neighbors;
-  const compatibleNeighborsB = patternB.neighbors;
+  const isConnectionEndA = patternA.connectionEnds
+    .map((ce) => (ce + hexA.rotation) % 6)
+    .includes(side);
+  const oppositeSide = (side + 3) % 6;
+  const isConnectionEndB = patternB.connectionEnds
+    .map((ce) => (ce + hexB.rotation) % 6)
+    .includes(oppositeSide);
 
-  return (
-    compatibleNeighborsA.includes(hexB) && compatibleNeighborsB.includes(hexA)
-  );
+  if (isConnectionEndA) {
+    // Check if the type of hexB is in canConnect
+    if (!patternA.canConnect.includes(hexB.type)) {
+      return false;
+    }
+
+    // Check if the corresponding side on hexB is a connection side
+    if (isConnectionEndB) {
+      return true;
+    }
+  } else {
+    // Check if the type of hexB is in neighbors
+    if (!patternA.neighbors.includes(hexB.type)) {
+      return false;
+    }
+
+    // Check if the corresponding side on hexB is NOT a connection side
+    if (!isConnectionEndB) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 interface FindLowestEntropyCellArgs {
-  waveFunction: Map<string, Set<HexType>>;
+  waveFunction: WaveFunction;
 }
 
 function findLowestEntropyCellSingle(
@@ -405,4 +568,161 @@ function findLowestEntropyCellSingle(
   });
 
   return minEntropyCell;
+}
+
+// export function connectAllRooms(hexMap: HexMap, gridSize: number): HexMap {
+//   const newHexMap = new Map(hexMap);
+//   const visited = new Set<string>();
+
+//   function floodFill(hex: Hex) {
+//     const key = hex.toString();
+
+//     if (visited.has(key) || !newHexMap.has(key)) return;
+
+//     const hexInfo = newHexMap.get(key);
+//     if (hexInfo && hexInfo.type === "EMPTY") {
+//       visited.add(key);
+//       for (const neighbor of hex.neighbors()) {
+//         floodFill(neighbor);
+//       }
+//     }
+//   }
+
+//   function findDoorCandidate(): {
+//     hex: Hex;
+//     hexInfo: HexInfo;
+//   } | null {
+//     for (const hex of iterateGrid(gridSize)) {
+//       const key = hex.toString();
+//       const hexInfo = newHexMap.get(key);
+//       if (hexInfo && hexInfo.type === "WALL") {
+//         let visitedEmptyNeighbor = false;
+//         let unvisitedEmptyNeighbor = false;
+//         for (const neighbor of hex.neighbors()) {
+//           const neighborKey = neighbor.toString();
+//           const neighborInfo = newHexMap.get(neighborKey);
+//           if (neighborInfo && neighborInfo.type === "EMPTY") {
+//             if (visited.has(neighborKey)) {
+//               visitedEmptyNeighbor = true;
+//             } else {
+//               unvisitedEmptyNeighbor = true;
+//             }
+//           }
+//           if (visitedEmptyNeighbor && unvisitedEmptyNeighbor) {
+//             return { hex, hexInfo };
+//           }
+//         }
+//       }
+//     }
+//     return null;
+//   }
+
+//   const startingHex = Array.from(newHexMap.keys()).find((key) => {
+//     const hexInfo = newHexMap.get(key);
+//     return hexInfo && hexInfo.type === "EMPTY";
+//   });
+
+//   if (startingHex) {
+//     floodFill(Hex.hexFromString(startingHex));
+//   }
+
+//   while (visited.size !== Array.from(newHexMap.keys()).length) {
+//     const doorCandidate = findDoorCandidate();
+//     if (doorCandidate) {
+//       newHexMap.set(doorCandidate.hex.toString(), {
+//         type: "DOOR",
+//         rotation: doorCandidate.hexInfo.rotation,
+//       });
+//       floodFill(doorCandidate.hex);
+//     } else {
+//       break;
+//     }
+//   }
+
+//   return newHexMap;
+// }
+
+export function connectAllRooms(hexMap: HexMap, gridSize: number): HexMap {
+  const newHexMap = new Map(hexMap);
+  const visited = new Set<string>();
+
+  function floodFill(hex: Hex): void {
+    const stack: Hex[] = [hex];
+    while (stack.length > 0) {
+      const current = stack.pop();
+      if (current) {
+        const key = current.toString();
+        if (!visited.has(key)) {
+          visited.add(key);
+          for (const neighbor of current.neighbors()) {
+            const neighborKey = neighbor.toString();
+            const neighborInfo = newHexMap.get(neighborKey);
+            if (
+              neighborInfo &&
+              (neighborInfo.type === "EMPTY" || neighborInfo.type === "DOOR")
+            ) {
+              stack.push(neighbor);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  function findDoorCandidate(): Hex | null {
+    for (const hex of iterateGrid(gridSize)) {
+      const key = hex.toString();
+      const hexInfo = newHexMap.get(key);
+      if (hexInfo && (hexInfo.type === "WALL" || hexInfo.type === "WINDOW")) {
+        let visitedEmptyNeighbor = false;
+        let unvisitedEmptyNeighbor = false;
+        for (const neighbor of hex.neighbors()) {
+          const neighborKey = neighbor.toString();
+          const neighborInfo = newHexMap.get(neighborKey);
+          if (
+            neighborInfo &&
+            (neighborInfo.type === "EMPTY" || neighborInfo.type === "DOOR")
+          ) {
+            if (visited.has(neighborKey)) {
+              visitedEmptyNeighbor = true;
+            } else {
+              unvisitedEmptyNeighbor = true;
+            }
+          }
+          if (visitedEmptyNeighbor && unvisitedEmptyNeighbor) {
+            newHexMap.set(key, { type: "DOOR", rotation: hexInfo.rotation });
+            return hex;
+          }
+        }
+      }
+    }
+    return null;
+  }
+  const startingHex = Array.from(newHexMap.keys()).find((key) => {
+    const hexInfo = newHexMap.get(key);
+    return hexInfo && hexInfo.type === "EMPTY";
+  });
+
+  if (startingHex) {
+    floodFill(Hex.hexFromString(startingHex));
+  }
+
+  while (visited.size !== Array.from(newHexMap.keys()).length) {
+    const doorCandidate = findDoorCandidate();
+    if (doorCandidate) {
+      const doorCandidateKey = doorCandidate.toString();
+      const hexInfo = newHexMap.get(doorCandidateKey);
+      if (hexInfo) {
+        newHexMap.set(doorCandidateKey, {
+          type: "DOOR",
+          rotation: hexInfo.rotation,
+        });
+      }
+      floodFill(doorCandidate);
+    } else {
+      break;
+    }
+  }
+
+  return newHexMap;
 }

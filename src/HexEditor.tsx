@@ -1,15 +1,26 @@
 import React, { useRef, useState, useEffect } from "react";
-import { StructurePattern, structurePatterns } from "./utils/procGen/structureWaveFunction";
+import {
+  StructurePattern,
+  structurePatterns,
+} from "./utils/procGen/structureWaveFunction";
 import { HexType, hexTypes } from "./game/Hex";
 import { Editor, EditorState } from "./game/Editor";
 import StructurePreview from "./components/StructurePreview";
 import "./HexEditor.css";
 import { exportPatterns, importPatterns } from "./utils/procGen/patterns";
+import { spriteInfo } from "./game/HexGrid";
+import { SpriteManager } from "./game/SpriteManager";
+import { hexRotations } from "./game/Structure";
 
 const HexEditor: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+  // const previewCanvasRef = useRef<HTMLCanvasElement>(null);
   const editorRef = useRef<Editor | null>(null);
+
+  const spriteManager = useRef(
+    new SpriteManager("images/ss.png", spriteInfo, () => {})
+  );
+
   const [editorState, setEditorState] = useState<EditorState>({
     activePattern: null,
     patterns: {},
@@ -18,11 +29,10 @@ const HexEditor: React.FC = () => {
   const [newPatternName, setNewPatternName] = useState("");
 
   useEffect(() => {
-    if (canvasRef.current && previewCanvasRef.current) {
+    if (canvasRef.current) {
       const ctx = canvasRef.current.getContext("2d");
-      const previewCtx = previewCanvasRef.current.getContext("2d");
-      if (ctx && previewCtx && !editorRef.current) {
-        editorRef.current = new Editor(ctx, previewCtx);
+      if (ctx && !editorRef.current) {
+        editorRef.current = new Editor(ctx, spriteManager.current);
         editorRef.current.events.on("currentState", handleCurrentState);
         // Run loadStructurePatterns with test data
         // editorRef.current.loadStructurePatterns(structurePatterns);
@@ -70,27 +80,23 @@ const HexEditor: React.FC = () => {
   };
 
   const handleImportPatterns = () => {
-
     const patterns = importPatterns();
 
     if (patterns && editorRef.current) {
       editorRef.current.loadStructurePatterns(patterns);
     }
-
-  }
+  };
 
   const handleTest = () => {
     if (editorRef.current) {
       editorRef.current.testPattern();
     }
-
-  }
-
+  };
 
   return (
     <div className="hex-editor">
       <div className="hex-editor-main">
-        <canvas ref={canvasRef} width={600} height={400} />
+        <canvas ref={canvasRef} width={1200} height={1000} />
         <div className="hex-editor-controls">
           {/* Render buttons to choose the currentHexType */}
           {hexTypes.map((hexType) => (
@@ -114,44 +120,50 @@ const HexEditor: React.FC = () => {
               placeholder="Pattern name"
             />
             <button onClick={handleAddPatternRecord}>Add Pattern</button>
-            <button onClick={() => exportPatterns(editorState.patterns)}>Export</button>
+            <button onClick={() => exportPatterns(editorState.patterns)}>
+              Export
+            </button>
             <button onClick={handleImportPatterns}>Import</button>
             <button onClick={handleTest}>Test</button>
-
+            <button
+              onClick={() => {
+                if (editorRef.current) {
+                  editorRef.current.renderHexMap();
+                }
+              }}
+            >
+              Render Hex Map
+            </button>
+            <button
+              onClick={() => {
+                if (editorRef.current) {
+                  editorRef.current.renderHexMapWithDoors();
+                }
+              }}
+            >
+              Render Hex Map With Doors
+            </button>
           </div>
         </div>
-
-
-        <canvas ref={previewCanvasRef} width={600} height={400} />
-
       </div>
-      <div className="hex-editor-previews">
-        {editorState.activePattern &&
-          Object.keys(editorState.patterns).map((structurePatternKey) => {
-            const structurePattern = editorState.patterns[structurePatternKey];
-            return (
-              <div key={structurePatternKey}>
-                {editorState.activePattern && (
-                  <StructurePreview
-                    structurePattern={structurePattern}
-                    activePattern={editorState.activePattern}
-                    onClick={() => {
-                      editorRef.current?.chooseActivePattern(
-                        structurePatternKey
-                      );
-                    }}
-                    onNeighbourAdd={(direction) => {
-                      handleAddNeighbour(structurePatternKey, direction);
-                    }}
-                    onNeighbourRemove={(direction) => {
-                      handleRemoveNeighbour(structurePatternKey, direction);
-                    }}
-                  />
-                )}
-              </div>
-            );
-          })}
-      </div>
+      {/* <div className="hex-editor-previews">
+        {hexTypes.map((hexType) => {
+          return hexRotations.map((rotation) => (
+            <StructurePreview
+              spriteManager={spriteManager.current}
+              hexType={hexType}
+              rotation={rotation}
+              onClick={() => {}}
+              onNeighbourAdd={(direction) => {
+                // handleAddNeighbour(structurePatternKey, direction);
+              }}
+              onNeighbourRemove={(direction) => {
+                // handleRemoveNeighbour(structurePatternKey, direction);
+              }}
+            />
+          ));
+        })}
+      </div> */}
     </div>
   );
 };

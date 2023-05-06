@@ -1,6 +1,7 @@
 import { Hex, HexType } from "../../game/Hex";
 import { StructureDefinition } from "../../game/Structure";
 import { iterateGrid } from "../hex/drawing";
+import { HexMap } from "../types";
 import { importPatterns } from "./patterns";
 import { patterns1 } from "./patternsLib";
 
@@ -15,13 +16,15 @@ export type StructurePattern = {
   }[];
 };
 
-// export const structurePatterns: Record<string, StructurePattern> = importPatterns()
 export const structurePatterns: Record<
   string,
   StructurePattern
-> = patterns1 as Record<string, StructurePattern>;
+> = importPatterns();
+// export const structurePatterns: Record<
+//   string,
+//   StructurePattern
+// > = patterns1 as Record<string, StructurePattern>;
 
-type HexMap = Map<string, HexType>;
 interface ConvertToHexMapArgs {
   structureMap: Map<string, StructurePatternName>;
   patterns: Record<StructurePatternName, StructurePattern>;
@@ -43,7 +46,10 @@ export function convertToHexMap(args: ConvertToHexMapArgs): HexMap {
         element.position.r + 3 * j
       );
       const hexType = element.type;
-      hexMap.set(hex.toString(), hexType);
+      hexMap.set(hex.toString(), {
+        type: hexType,
+        rotation: element.rotation,
+      });
     });
   });
 

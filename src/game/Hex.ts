@@ -15,7 +15,7 @@ export type ItemType =
   | "SWORD"
   | "ARMOUR";
 
-export type SpriteType = ItemType | "PLAYER" | "ENEMY";
+export type SpriteType = ItemType | HexType | "PLAYER" | "ENEMY" | "BASE_TILE";
 
 export type Action =
   | "SWAP_WEAPON"
@@ -43,20 +43,26 @@ export const itemAmounts: Record<ItemType, number> = {
 };
 
 export const hexTypes: HexType[] = [
-  "GRASS",
-  "ROAD",
-  "SEA",
-  "WOODS",
-  "SAND",
-  "DEEP_WOODS",
-  "DOOR",
+  // "GRASS",
+  // "ROAD",
+  // "SEA",
+  // "WOODS",
+  // "SAND",
+  // "DEEP_WOODS",
+  // "DOOR",
   "WALL",
-
+  "WALL_END",
+  "WALL_CORNER",
+  "WALL_CORNER_THREE",
+  "WINDOW",
+  // "DOOR",
+  "EMPTY",
 ];
 
 export const blocksLineOfSite: HexType[] = ["DEEP_WOODS", "WALL", "DOOR"];
 
 export const allowStructure: HexType[] = ["GRASS", "WOODS", "ROAD"];
+export const walkAbleHexTypes: HexType[] = ["EMPTY", "DOOR"];
 
 export const movementCosts: Record<HexType, number> = {
   GRASS: 2,
@@ -87,8 +93,13 @@ export type HexType =
   | "DEEP_WOODS"
   | "DOOR"
   | "WALL"
-  | "DEATH";
-
+  | "WALL_END"
+  | "WALL_CORNER_TIGHT"
+  | "WALL_CORNER"
+  | "WALL_CORNER_THREE"
+  | "WINDOW"
+  | "DEATH"
+  | "EMPTY";
 
 export class Hex {
   public type?: HexType;
@@ -278,17 +289,18 @@ export class Hex {
     return new Hex(this.q + offsetQ, this.r + offsetR);
   }
 
-  public  cubeRing(radius: number): Hex[]  {
-
+  public cubeRing(radius: number): Hex[] {
     const center = this;
     const results: Hex[] = [];
-  
+
     if (radius === 0) {
       return [center];
     }
-  
-    let hex = center.add(new Hex(hexDirections[4][0], hexDirections[4][1]).scale(radius));
-  
+
+    let hex = center.add(
+      new Hex(hexDirections[4][0], hexDirections[4][1]).scale(radius)
+    );
+
     for (let i = 0; i < 6; i++) {
       for (let j = 0; j < radius; j++) {
         results.push(hex);

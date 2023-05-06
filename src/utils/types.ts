@@ -1,4 +1,5 @@
 import { HexType } from "../game/Hex";
+import { HexRotation } from "../game/Structure";
 
-
-export type HexMap = Map<string, HexType>;
+export type HexInfo = { type: HexType; rotation: HexRotation };
+export type HexMap = Map<string, HexInfo>;

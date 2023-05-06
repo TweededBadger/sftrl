@@ -42,7 +42,8 @@ export class SpriteManager {
     x: number,
     y: number,
     width: number,
-    height: number
+    height: number,
+    rotation: number = 0 // in degrees
   ): void {
     if (!this.spriteSheet) {
       return;
@@ -53,16 +54,31 @@ export class SpriteManager {
       console.error(`Sprite not found: ${spriteKey}`);
       return;
     }
+
+    // Save the unrotated context state
+    ctx.save();
+
+    // Move the rotation point to the center of the image
+    ctx.translate(x + width / 2, y + height / 2);
+
+    // Convert degrees to radians and rotate the canvas to the specified angle
+    const rotationInRadians = (rotation * Math.PI) / 180;
+    ctx.rotate(rotationInRadians);
+
+    // Draw the image, but offset its position by half its width and height to account for the previous translate
     ctx.drawImage(
       this.spriteSheet,
       sprite.x,
       sprite.y,
       sprite.width,
       sprite.height,
-      x,
-      y,
+      -width / 2,
+      -height / 2,
       width,
       height
     );
+
+    // Restore the unrotated context state
+    ctx.restore();
   }
 }

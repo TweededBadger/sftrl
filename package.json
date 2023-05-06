@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build-ss": "montage -background transparent -geometry 128x128+4+4 sprite-sheet-images\\*.png public\\images\\ss.png"
   },
   "dependencies": {
     "@types/events": "^3.0.0",
