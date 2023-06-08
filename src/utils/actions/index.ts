@@ -1,5 +1,5 @@
 import { AIPlayer } from "../../game/AIPlayer";
-import { Combat, Weapons } from "../../game/Combat";
+import { Combat, Weapons, weapons } from "../../game/Combat";
 import { Action, ItemInfo } from "../../game/Hex";
 import { Player } from "../../game/Player";
 import { startCombatWithNeighbours } from "../combat";
@@ -11,6 +11,15 @@ export const actionCosts: Record<Action, number> = {
   TAKE_ARMOUR: 1,
   ATTACK: 1,
   END_TURN: 0,
+};
+
+export const actionLabels: Record<Action, string> = {
+  SWAP_WEAPON: "Swap Weapon",
+  OPEN_CHEST: "Open Chest",
+  TAKE_HEALTH: "Take Health",
+  TAKE_ARMOUR: "Take Armour",
+  ATTACK: "Attack",
+  END_TURN: "End Turn",
 };
 
 export function performAction(
@@ -31,13 +40,11 @@ export function performAction(
 
   switch (action) {
     case "SWAP_WEAPON":
-      if (
-        currentItem &&
-        ["CLEAVER", "SWORD", "SCISSORS", "ROCK"].includes(currentItem.type)
-      ) {
-        if (player.currentWeapon !== "HANDS") {
+      if (currentItem && weapons.includes(currentItem.type as Weapons)) {
+        if (player.currentWeapon !== "FIST") {
           items.set(player.hex.toString(), {
             type: player.currentWeapon,
+            isWeapon: true,
           });
         } else {
           items.delete(player.hex.toString());

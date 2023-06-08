@@ -27,8 +27,7 @@ export function generateItems(
         .map((key) => Hex.hexFromString(key))
         .some((itemHex) => itemHex.distance(hex) <= 2);
 
-      isSuitable =
-        (hexType === "GRASS" || hexType === "ROAD") && !isNearOtherItems;
+      isSuitable = hexType?.type === "EMPTY" && !isNearOtherItems;
       tries++;
       if (tries > 100) {
         return;
@@ -70,7 +69,7 @@ export function generateItems(
 export function placeItemAtHex(
   hex: Hex,
   itemType: ItemType,
-  hexTypes: Map<string, HexType>,
+  hexTypes: HexMap,
   items: Map<string, ItemInfo>
 ): void {
   const neighbors = hex.neighbors();
@@ -80,8 +79,8 @@ export function placeItemAtHex(
     const neighborType = hexTypes.get(neighbor.toString());
     return (
       neighborType !== undefined &&
-      neighborType !== "WALL" &&
-      movementCosts[neighborType] <= 4
+      neighborType.type !== "WALL" &&
+      movementCosts[neighborType.type] <= 4
     );
   });
 

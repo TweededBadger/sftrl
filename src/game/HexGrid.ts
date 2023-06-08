@@ -1,29 +1,44 @@
 import { calculateVisibleHexes } from "../utils/hex";
 import { iterateGrid, renderHex } from "../utils/hex/drawing";
+import { HexMap } from "../utils/types";
 import { AIPlayer } from "./AIPlayer";
 import { Hex, HexType, ItemInfo, movementCosts, SpriteType } from "./Hex";
 import { Main } from "./Main";
 import { Player } from "./Player";
 import { SpriteInfo, SpriteManager } from "./SpriteManager";
 
-export const spriteInfo: Record<SpriteType, SpriteInfo> = {
-  HEALTH: { x: 64 * 2, y: 0, width: 64, height: 64 },
-  CHEST: { x: 64 * 4, y: 64 * 6, width: 64, height: 64 },
-  ROCK: { x: 64 * 1, y: 64 * 2, width: 64, height: 64 },
-  SCISSORS: { x: 64 * 4, y: 64 * 3, width: 64, height: 64 },
-  CLEAVER: { x: 64 * 1, y: 64 * 3, width: 64, height: 64 },
-  SWORD: { x: 64 * 4, y: 64 * 5, width: 64, height: 64 },
-  ARMOUR: { x: 64 * 1, y: 64 * 1, width: 64, height: 64 },
-  PLAYER: { x: 64 * 0, y: 64 * 8, width: 64, height: 64 },
-  ENEMY: { x: 64 * 1, y: 64 * 8, width: 64, height: 64 },
-  BASE_TILE: { x: 128 * 2, y: 128 * 1, width: 128, height: 128 },
-  DOOR: { x: 128 * 1, y: 128 * 1, width: 128, height: 128 },
-  WALL: { x: 128 * 3, y: 128 * 2, width: 128, height: 128 },
-  WALL_END: { x: 128 * 3, y: 128 * 2, width: 128, height: 128 },
-  WALL_CORNER: { x: 128 * 0, y: 128 * 2, width: 128, height: 128 },
-  WALL_CORNER_TIGHT: { x: 128 * 2, y: 128 * 2, width: 128, height: 128 },
-  WALL_CORNER_THREE: { x: 128 * 1, y: 128 * 2, width: 128, height: 128 },
-  WINDOW: { x: 128 * 0, y: 128 * 3, width: 128, height: 128 },
+export const spriteInfoTiles: Record<string, SpriteInfo> = {
+  BASE_TILE: { x: 128 * 1, y: 128 * 0, width: 128, height: 128 },
+  DOOR: { x: 128 * 0, y: 128 * 0, width: 128, height: 128 },
+  WALL: { x: 128 * 2, y: 128 * 1, width: 128, height: 128 },
+  WALL_END: { x: 128 * 2, y: 128 * 1, width: 128, height: 128 },
+  WALL_CORNER: { x: 128 * 2, y: 128 * 0, width: 128, height: 128 },
+  WALL_CORNER_TIGHT: { x: 128 * 1, y: 128 * 1, width: 128, height: 128 },
+  WALL_CORNER_THREE: { x: 128 * 3, y: 128 * 0, width: 128, height: 128 },
+  WALL_CORNER_THREE_1: { x: 128 * 0, y: 128 * 1, width: 128, height: 128 },
+  WINDOW: { x: 128 * 3, y: 128 * 1, width: 128, height: 128 },
+};
+
+export const spriteInfoCharacters: Record<string, SpriteInfo> = {
+  PLAYER: { x: 256 * 1, y: 256 * 1, width: 256, height: 256 },
+  ALIEN_1: { x: 256 * 0, y: 256 * 0, width: 256, height: 256 },
+  ALIEN_2: { x: 256 * 1, y: 256 * 0, width: 256, height: 256 },
+  ALIEN_3: { x: 256 * 2, y: 256 * 0, width: 256, height: 256 },
+  ALIEN_4: { x: 256 * 3, y: 256 * 0, width: 256, height: 256 },
+  ALIEN_5: { x: 256 * 0, y: 256 * 1, width: 256, height: 256 },
+};
+
+export const spriteWeapons: Record<string, SpriteInfo> = {
+  FIST: { x: 256 * 0, y: 256 * 0, width: 256, height: 256 },
+  HAMMER_1: { x: 256 * 1, y: 256 * 0, width: 256, height: 256 },
+  TAZER: { x: 256 * 2, y: 256 * 0, width: 256, height: 256 },
+  HAMMER_2: { x: 256 * 3, y: 256 * 0, width: 256, height: 256 },
+  SWORD: { x: 256 * 0, y: 256 * 1, width: 256, height: 256 },
+};
+
+export const spriteItems: Record<string, SpriteInfo> = {
+  HEALTH: { x: 256 * 0, y: 256 * 0, width: 256, height: 256 },
+  ARMOUR: { x: 256 * 1, y: 256 * 0, width: 256, height: 256 },
 };
 
 type Point = { x: number; y: number };
@@ -34,7 +49,7 @@ export class HexGrid {
   private ctx: CanvasRenderingContext2D;
   // private visibilityMap: Map<string, boolean>;
   // private visibleHexes: Set<string> = new Set();
-  private spriteManager: SpriteManager;
+  public spriteManager: SpriteManager;
   public main: Main;
   public canvas: HTMLCanvasElement;
 
@@ -44,14 +59,34 @@ export class HexGrid {
     canvas: HTMLCanvasElement,
     onLoaded: () => void
   ) {
-    this.hexSize = 30;
+    this.hexSize = 60;
     this.canvas = canvas;
     this.ctx = this.canvas.getContext("2d") as CanvasRenderingContext2D;
     // this.visibilityMap = new Map();
     this.viewDistance = viewDistance;
     this.spriteManager = new SpriteManager(
-      "images/items_all.png",
-      spriteInfo,
+      [
+        {
+          sheetId: "TILES",
+          spriteInfo: spriteInfoTiles,
+          src: "images/ss_tiles.png",
+        },
+        {
+          sheetId: "WEAPONS",
+          spriteInfo: spriteWeapons,
+          src: "images/ss_weapons.png",
+        },
+        {
+          sheetId: "ITEMS",
+          spriteInfo: spriteItems,
+          src: "images/ss_items.png",
+        },
+        {
+          sheetId: "CHARACTERS",
+          spriteInfo: spriteInfoCharacters,
+          src: "images/ss_characters.png",
+        },
+      ],
       () => {
         onLoaded();
       }
@@ -87,7 +122,7 @@ export class HexGrid {
 
   public renderGrid(
     gridSize: number,
-    hexTypes: Map<string, HexType>,
+    hexTypes: HexMap,
     player: Player,
     items: Map<string, ItemInfo>,
     debug: boolean
@@ -96,7 +131,7 @@ export class HexGrid {
 
     for (const hex of iterateGrid(gridSize)) {
       const hexKey = hex.toString();
-      const type = hexTypes.get(hexKey) || "WALL";
+      const hexInfo = hexTypes.get(hexKey);
       const isVisible = this.main.debug.renderWholeMap
         ? true
         : player.visibilityMap.get(hexKey);
@@ -107,15 +142,18 @@ export class HexGrid {
 
       const isOutsideZone = this.main.deathMap.get(hexKey);
 
-      if (isVisible && type) {
+      if (isVisible && hexInfo?.type) {
         renderHex(
           this.ctx,
+          this.spriteManager,
           hex,
           offsetX,
           offsetY,
           this.hexSize,
-          type,
-          !isWithinViewDistance
+          hexInfo.type,
+          !isWithinViewDistance,
+          hexInfo.rotation,
+          debug
         );
 
         // Check if there's an item at the current hex and render it
@@ -145,17 +183,17 @@ export class HexGrid {
         }
       }
 
-      if (isOutsideZone) {
-        renderHex(
-          this.ctx,
-          hex,
-          offsetX,
-          offsetY,
-          this.hexSize,
-          "DEATH",
-          false
-        );
-      }
+      // if (isOutsideZone) {
+      //   renderHex(
+      //     this.ctx,
+      //     hex,
+      //     offsetX,
+      //     offsetY,
+      //     this.hexSize,
+      //     "DEATH",
+      //     false
+      //   );
+      // }
     }
   }
 
@@ -233,6 +271,7 @@ export class HexGrid {
 
     this.spriteManager.drawSprite(
       ctx,
+      item.isWeapon ? "WEAPONS" : "ITEMS",
       item.type,
       x - imageSize / 2,
       y - imageSize / 2,
@@ -261,21 +300,25 @@ export class HexGrid {
     const centerX = x + offsetX;
     const centerY = y + offsetY;
 
+    const imageSize = this.hexSize * 2.6;
+
     // Render the "PLAYER" sprite
     this.spriteManager.drawSprite(
       this.ctx,
-      "ENEMY",
-      centerX - this.hexSize / 2,
-      centerY - this.hexSize / 2,
-      this.hexSize,
-      this.hexSize
+      "CHARACTERS",
+      aiPlayer.sprite,
+      centerX - imageSize / 2,
+      centerY - imageSize / 2 - imageSize * 0.2,
+      imageSize,
+      imageSize
     );
 
     // Draw health bar
     const healthBarWidth = this.hexSize;
     const healthBarHeight = this.hexSize * 0.2;
     const healthBarX = centerX - healthBarWidth / 2;
-    const healthBarY = centerY - this.hexSize / 2 - healthBarHeight - 2;
+    const healthBarY =
+      centerY - this.hexSize / 2 - healthBarHeight - 2 - imageSize * 0.5;
 
     // Draw background (black) bar
     this.ctx.fillStyle = "black";
@@ -302,11 +345,24 @@ export class HexGrid {
       healthBarHeight + 1
     );
 
+    const weaponImageSize = this.hexSize * 1.5;
+
+    this.spriteManager.drawSprite(
+      this.ctx,
+      "WEAPONS",
+      aiPlayer.currentWeapon,
+      centerX - weaponImageSize / 2,
+      centerY - weaponImageSize / 2 - imageSize,
+      weaponImageSize,
+      weaponImageSize
+    );
+
     const weaponImage = this.main.weaponImages[aiPlayer.currentWeapon];
     if (weaponImage) {
       const weaponIconSize = this.hexSize;
       const weaponIconX = centerX - weaponIconSize / 2;
-      const weaponIconY = centerY - this.hexSize - weaponIconSize;
+      const weaponIconY =
+        centerY - this.hexSize - weaponIconSize - imageSize * 0.5;
       this.ctx.drawImage(
         weaponImage,
         weaponIconX,
@@ -317,7 +373,7 @@ export class HexGrid {
     }
   }
 
-  public setVisibleHexes = (hexTypes: Map<string, HexType>, player: Player) => {
+  public setVisibleHexes = (hexTypes: HexMap, player: Player) => {
     player.visibleHexes = calculateVisibleHexes(
       player.hex,
       this.viewDistance,
@@ -348,14 +404,15 @@ export class HexGrid {
     const centerX = x + offsetX;
     const centerY = y + offsetY;
 
-    const imageSize = this.hexSize * 1.5;
+    const imageSize = this.hexSize * 3;
 
     // Render the "PLAYER" sprite
     this.spriteManager.drawSprite(
       this.ctx,
+      "CHARACTERS",
       "PLAYER",
       centerX - imageSize / 2,
-      centerY - imageSize / 2,
+      centerY - imageSize / 2 - imageSize * 0.2,
       imageSize,
       imageSize
     );
@@ -373,16 +430,16 @@ export class HexGrid {
     const neighbors = hex.neighbors();
 
     const reachableHexes = neighbors.filter((neighbor) => {
-      const neighborType = this.main.hexTypes.get(neighbor.toString());
-      if (!neighborType) return false;
-      const movementCost = movementCosts[neighborType];
+      const neighborInfo = this.main.hexTypes.get(neighbor.toString());
+      if (!neighborInfo) return false;
+      const movementCost = movementCosts[neighborInfo.type];
       return remainingActions - movementCost >= 0;
     });
 
     const nextReachableHexes = reachableHexes.flatMap((reachableHex) => {
-      const neighborType = this.main.hexTypes.get(reachableHex.toString());
-      if (!neighborType) return [];
-      const movementCost = movementCosts[neighborType];
+      const neighborInfo = this.main.hexTypes.get(reachableHex.toString());
+      if (!neighborInfo) return [];
+      const movementCost = movementCosts[neighborInfo.type];
       const newVisited = new Set(visited);
       newVisited.add(hex.toString());
       return this.getReachableHexes(
@@ -539,6 +596,7 @@ export class HexGrid {
   }
 
   public clearCanvas(): void {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.fillStyle = "black";
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
 }

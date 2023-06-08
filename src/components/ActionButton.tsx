@@ -10,11 +10,13 @@ import {
 } from "react-icons/fa";
 import clsx from "clsx";
 import { Action } from "../game/Hex";
+import { actionCosts, actionLabels } from "../utils/actions";
 
 interface ActionButtonProps {
   action: Action;
   onClick: () => void;
   highlight?: boolean;
+  className?: string;
 }
 
 const actionToIcon: Record<Action, IconType> = {
@@ -30,12 +32,17 @@ const ActionButton: React.FC<ActionButtonProps> = ({
   action,
   onClick,
   highlight,
+  className,
 }) => {
   const IconComponent = actionToIcon[action];
 
   return (
-    <button className={clsx("action-button", { highlight })} onClick={onClick}>
-      <IconComponent />
+    <button
+      className={clsx("action-button", className, { highlight })}
+      onClick={onClick}
+    >
+      {actionLabels[action]}{" "}
+      {actionCosts[action] > 0 && <span> - {actionCosts[action]} AP</span>}
     </button>
   );
 };

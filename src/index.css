@@ -6,7 +6,7 @@
   /* color-scheme: light dark; */
   color: rgba(255, 255, 255, 0.87);
   
-  background-color: #ffffff;
+  background-color: #000000;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -25,6 +25,35 @@
   z-index: 2;
 }
 
+#hex-grid-canvas-2 {
+  pointer-events: none;
+}
+
+.end-turn-button {
+  position: absolute;
+  /* center the button */
+  top: calc(50% + 80px);
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  pointer-events: all;
+font-size: 30px;
+}
+
+.end-turn-buttons {
+  position: absolute;
+  /* center the button */
+  top: calc(50%);
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  pointer-events: all;
+font-size: 15px;
+display: flex;
+flex-direction: column;
+gap: 5px;
+}
+
 #root {
   position: fixed;
   top: 0;
@@ -32,7 +61,8 @@
   width: 100%;
   height: 100%;
   z-index: 3;
-  pointer-events: none;
+  /* pointer-events: none; */
+  color:white;
 
 }
 
@@ -67,9 +97,10 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  /* background-color: #1a1a1a; */
+  background-color: black;
   cursor: pointer;
   transition: border-color 0.25s;
+  color: white;
 }
 
 button:hover {

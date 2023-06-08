@@ -1,7 +1,8 @@
 import { actionCosts } from "../utils/actions";
 import { shouldFormAllianceWithPlayer } from "../utils/aiPlayer";
+import { HexMap } from "../utils/types";
 import { getRandomColor } from "../utils/utils";
-import { Weapons, weaponStats } from "./Combat";
+import { Weapons, weaponStats, weapons } from "./Combat";
 import { Action, Hex, HexType, ItemInfo, movementCosts } from "./Hex";
 
 type Traits = {
@@ -19,9 +20,10 @@ export class Player {
   public maxHealth: number = 100;
   public health: number = 100;
   public armour: number = 0;
-  public currentWeapon: Weapons = "HANDS";
+  public currentWeapon: Weapons = "FIST";
   public availableActions: Action[] = [];
   public name: string = "Player";
+  public sprite: string = "PLAYER";
   public visibilityMap: Map<string, boolean>;
   public visibleHexes: Set<string> = new Set();
   public friends: number[] = [];
@@ -44,7 +46,7 @@ export class Player {
     this.alive = true;
     this.health = this.maxHealth;
     this.armour = 0;
-    this.currentWeapon = "HANDS";
+    this.currentWeapon = "FIST";
   };
 
   public updateAvailableActions(
@@ -63,11 +65,12 @@ export class Player {
 
     const currentItem = items.get(currentPosition);
     if (currentItem) {
-      if (["CLEAVER", "SWORD", "SCISSORS", "ROCK"].includes(currentItem.type)) {
+      if (weapons.includes(currentItem.type as Weapons)) {
         let shouldAllowSwap = true;
         if (this.isAiPlayer) {
           const currentWeaponDamage = weaponStats[this.currentWeapon].damage;
-          const newWeaponDamage = weaponStats[(currentItem.type as Weapons)].damage;
+          const newWeaponDamage =
+            weaponStats[currentItem.type as Weapons].damage;
           if (newWeaponDamage <= currentWeaponDamage) {
             shouldAllowSwap = false;
           }
@@ -89,10 +92,12 @@ export class Player {
     if (neighboringPlayers.length > 0) {
       if (this.isAiPlayer) {
         for (const player of neighboringPlayers) {
-          if (shouldFormAllianceWithPlayer({
-            player: this,
-            visiblePlayer: player,
-          })) {
+          if (
+            shouldFormAllianceWithPlayer({
+              player: this,
+              visiblePlayer: player,
+            })
+          ) {
           } else {
             availableActions.push("ATTACK");
           }
@@ -122,7 +127,7 @@ export class Player {
   private getReachableHexes(
     hex: Hex,
     remainingActions: number,
-    hexTypes: Map<string, HexType>,
+    hexTypes: HexMap,
     deathZoneMap: Map<string, boolean>,
     visited: Set<string> = new Set<string>()
   ): Hex[] {
@@ -135,14 +140,14 @@ export class Player {
       // if (deathZoneMap.get(neighbor.toString())) return false;
       const neighborType = hexTypes.get(neighbor.toString());
       if (!neighborType) return false;
-      const movementCost = movementCosts[neighborType];
+      const movementCost = movementCosts[neighborType.type];
       return remainingActions - movementCost >= 0;
     });
 
     const nextReachableHexes = reachableHexes.flatMap((reachableHex) => {
       const neighborType = hexTypes.get(reachableHex.toString());
       if (!neighborType) return [];
-      const movementCost = movementCosts[neighborType];
+      const movementCost = movementCosts[neighborType.type];
       const newVisited = new Set(visited);
       newVisited.add(hex.toString());
       return this.getReachableHexes(
@@ -157,8 +162,10 @@ export class Player {
     return [...reachableHexes, ...nextReachableHexes];
   }
 
-  public setReachableHexes(hexTypes: Map<string, HexType>,
-    deathZoneMap: Map<string, boolean>,): void {
+  public setReachableHexes(
+    hexTypes: HexMap,
+    deathZoneMap: Map<string, boolean>
+  ): void {
     const remainingActions = this.actionsPerTurn - this.actionsTaken;
     this.reachableHexes = this.getReachableHexes(
       this.hex,

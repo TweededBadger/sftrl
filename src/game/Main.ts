@@ -37,7 +37,9 @@ import {
   generateStructures,
   structurePatterns,
 } from "../utils/procGen/structureWaveFunction";
-import { pixelToHex } from "../utils/hex/drawing";
+import { clearCanvas, drawPath, pixelToHex } from "../utils/hex/drawing";
+import { connectAllRooms, generateHexTypesSingle } from "../utils/procGen";
+import { SpriteManager } from "./SpriteManager";
 
 const thresholds: Record<number, HexType> = {
   0.4: "SEA",
@@ -56,6 +58,7 @@ type Debug = {
 export class Main {
   private gridSize: number;
   public canvas: HTMLCanvasElement;
+  public canvas2: HTMLCanvasElement;
   private zoneRadius: number;
   public hexTypes: HexMap = new Map();
   public deathMap: Map<string, boolean> = new Map();
@@ -67,6 +70,8 @@ export class Main {
   private player: Player = new Player(new Hex(0, 0));
   private hexGrid: HexGrid;
   private actions: Actions;
+  public spriteManager: SpriteManager;
+  public spritesLoaded: boolean = false;
   public currentCombat: Combat | undefined;
   public turnNumber: number = 0;
   public gameState: "NOT_PLAYING" | "PLAYING" | "GAME_OVER" | "NOT_INIT" =
@@ -82,11 +87,12 @@ export class Main {
     showAIplayertarget: false,
   };
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, canvas2: HTMLCanvasElement) {
     EventEmitter;
     this.gridSize = 30;
     this.zoneRadius = this.gridSize;
     this.canvas = canvas;
+    this.canvas2 = canvas2;
     // const structureMap = generateStructures({
     //   gridSize: this.gridSize,
     //   patterns: structurePatterns,
@@ -161,16 +167,18 @@ export class Main {
 
     this.hexGrid = new HexGrid(this, this.viewDistance, this.canvas, () => {
       this.render();
+      this.spritesLoaded = true;
     });
+    this.spriteManager = this.hexGrid.spriteManager;
     this.actions = new Actions(this);
-    this.getIconImages();
+    // this.getIconImages();
   }
 
   async getIconImages() {
-    this.weaponImages = ((await loadWeaponsIcons()) as unknown) as Record<
-      Weapons,
-      HTMLImageElement
-    >;
+    // this.weaponImages = ((await loadWeaponsIcons()) as unknown) as Record<
+    //   Weapons,
+    //   HTMLImageElement
+    // >;
   }
 
   public reset() {
@@ -180,15 +188,20 @@ export class Main {
     // this.items = generateItems(this.hexTypes, itemAmounts, this.gridSize);
     this.aiPlayers = [];
     this.zoneRadius = this.gridSize;
-    const structureMap = generateStructures({
+    // const structureMap = generateStructures({
+    //   gridSize: this.gridSize,
+    //   patterns: structurePatterns,
+    // });
+    // this.hexTypes = convertToHexMap({
+    //   structureMap,
+    //   patterns: structurePatterns,
+    //   gridSize: this.gridSize,
+    // });
+
+    const newHexMap = generateHexTypesSingle({
       gridSize: this.gridSize,
-      patterns: structurePatterns,
     });
-    this.hexTypes = convertToHexMap({
-      structureMap,
-      patterns: structurePatterns,
-      gridSize: this.gridSize,
-    });
+    this.hexTypes = connectAllRooms(newHexMap, this.gridSize);
     this.deathMap = new Map();
     this.items = generateItems(this.hexTypes, itemAmounts, this.gridSize);
 
@@ -277,7 +290,7 @@ export class Main {
   }
 
   public killPlayer(playerToRemove: Player) {
-    if (playerToRemove.currentWeapon !== "HANDS")
+    if (playerToRemove.currentWeapon !== "FIST")
       placeItemAtHex(
         playerToRemove.hex,
         playerToRemove.currentWeapon,
@@ -475,12 +488,15 @@ export class Main {
   }
 
   public zoomIn(): void {
-    this.hexGrid.hexSize = this.hexGrid.hexSize + 2;
+    this.hexGrid.hexSize = this.hexGrid.hexSize + 5;
     this.render();
   }
 
   public zoomOut(): void {
-    this.hexGrid.hexSize = this.hexGrid.hexSize - 2;
+    this.hexGrid.hexSize = this.hexGrid.hexSize - 5;
+    if (this.hexGrid.hexSize < 5) {
+      this.hexGrid.hexSize = 5;
+    }
     this.render();
   }
 
@@ -494,12 +510,12 @@ export class Main {
       this.items,
       this.debug.showGridCoords
     );
+
+    this.hexGrid.renderReachableArea(this.player, this.player);
     this.hexGrid.renderPlayer(this.player, this.player.hex);
     for (const aiPlayer of this.aiPlayers) {
       this.hexGrid.renderAIPlayer(aiPlayer, this.player);
     }
-
-    this.hexGrid.renderReachableArea(this.player, this.player);
 
     this.hexGrid.drawZone(this.zoneCenter, this.zoneRadius, this.player);
     // this.hexGrid.drawMovableArea(this.player);
@@ -729,9 +745,9 @@ export class Main {
 
         if (this.hasTargetChanged(player, newTargetPosition)) {
           const avoidHexes = new Map<string, boolean>();
-          this.aiPlayers.forEach((player) => {
-            avoidHexes.set(player.hex.toString(), true);
-          });
+          // this.aiPlayers.forEach((player) => {
+          //   avoidHexes.set(player.hex.toString(), true);
+          // });
 
           const { path, totalCost } = findCheapestPath({
             start: player.hex,
@@ -850,9 +866,26 @@ export class Main {
       this.handleClick(event);
     });
 
+    // add mousemove event listener to the canvas
+    this.hexGrid.canvas.addEventListener("mousemove", (event) => {
+      this.handleMouseMove(event);
+    });
+
     window.addEventListener("keydown", (event) => {
       if (event.code === "Space") {
         this.performAction("END_TURN");
+      }
+    });
+
+    // zoom in when the mouse wheel is used
+    this.hexGrid.canvas.addEventListener("wheel", (event) => {
+      event.preventDefault();
+
+      if (event.deltaY < 0) {
+        this.zoomIn();
+      }
+      if (event.deltaY > 0) {
+        this.zoomOut();
       }
     });
 
@@ -971,6 +1004,44 @@ export class Main {
 
   //   return randomHex;
   // }
+
+  private handleMouseMove(event: MouseEvent): void {
+    const rect = this.hexGrid.canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    const { offsetX, offsetY } = this.hexGrid.calculateOffset(this.player.hex);
+    const hex = pixelToHex(x - offsetX, y - offsetY, this.hexGrid.hexSize);
+
+    console.log(hex.toString());
+
+    const reachable = this.player.reachableHexes.some((reachableHex) =>
+      reachableHex.equals(hex)
+    );
+
+    if (reachable) {
+      // Calculate the shortest path and its total movement cost
+      const { path, totalCost } = findCheapestPath({
+        start: this.player.hex,
+        target: hex,
+        hexTypes: this.hexTypes,
+      });
+
+      if (totalCost > 0) {
+        drawPath(
+          path,
+          this.canvas2.getContext("2d") as CanvasRenderingContext2D,
+          this.hexGrid.hexSize,
+          offsetX,
+          offsetY,
+          "white",
+          5,
+          totalCost
+        );
+        return;
+      }
+    }
+    clearCanvas(this.canvas2);
+  }
 
   private handleClick(event: MouseEvent): void {
     const rect = this.hexGrid.canvas.getBoundingClientRect();

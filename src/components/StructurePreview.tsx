@@ -10,7 +10,6 @@ import {
 } from "react-icons/fa";
 import "./StructurePreview.css"; // Import the CSS
 import { SpriteManager } from "../game/SpriteManager";
-import { spriteInfo } from "../game/HexGrid";
 import { HexRotation } from "../game/Structure";
 
 interface StructurePreviewProps {

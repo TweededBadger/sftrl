@@ -16,6 +16,7 @@ export class AIPlayer extends Player {
     this.maxHealth = 100;
     this.health = 100;
     this.isAiPlayer = true;
+    this.sprite = "ALIEN_" + Math.ceil(Math.random() * 5);
     // this.actionsPerTurn = 4;
   }
 }

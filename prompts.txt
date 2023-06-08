@@ -1,0 +1,44 @@
+Here is part of a Player class within a game I cam currently developing:
+
+type Traits = {
+  attack: number;
+};
+
+export class Player {
+  public hex: Hex;
+  public reachableHexes: Hex[] = [];
+  id: number;
+  alive: boolean = false;
+  public color: string;
+  public actionsPerTurn: number = 2;
+  public actionsTaken: number = 0;
+  public maxHealth: number = 100;
+  public health: number = 100;
+  public armour: number = 0;
+  public currentWeapon: Weapons = "FIST";
+  public availableActions: Action[] = [];
+  public name: string = "Player";
+  public sprite: string = "PLAYER";
+  public visibilityMap: Map<string, boolean>;
+  public visibleHexes: Set<string> = new Set();
+  public friends: number[] = [];
+
+  public isAiPlayer: boolean = false;
+  public traits: Traits = {
+    attack: Math.random(),
+  };
+
+  constructor(startingHex: Hex) {
+    this.hex = startingHex;
+    this.id = Math.round(Math.random() * 10000);
+    this.name = "Player " + this.id;
+    this.visibilityMap = new Map<string, boolean>();
+    this.color = getRandomColor();
+  }
+
+  Design a base class to be associate with the Player class that represents the state of a player in a sci-fi turn-based combat game where armor can be assigned to body parts and weapons can be assigned to hands. The class should include attributes for the player's head, torso, arms, and legs, as well as their health, action points, initiative, equipped armor for each body part, and equipped weapons for each hand. 
+  
+  
+  
+  Incorporate methods for managing player actions, such as attacking, defending, using abilities, equipping armor and weapons, and managing health and action points. Additionally, implement helper methods to handle the effects of targeting specific body parts, countering attacks, and resolving actions."
+

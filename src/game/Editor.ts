@@ -6,7 +6,6 @@ import {
   generateStructures,
 } from "../utils/procGen/structureWaveFunction";
 import { Hex, HexType, hexTypes } from "./Hex";
-import { HexGrid, spriteInfo } from "./HexGrid"; // Assuming you have the HexGrid class
 import { HexMap } from "../utils/types";
 import { SpriteManager } from "./SpriteManager";
 import { HexRotation } from "./Structure";
@@ -28,7 +27,8 @@ export class Editor {
   activePattern: StructurePattern | null;
   activePatternCanvasCtx: CanvasRenderingContext2D;
   currentHexType: HexType | null;
-  hexSize: number = 40;
+  hexSize: number = 20;
+  gridSize: number = 20;
   private spriteManager: SpriteManager;
   hexMap: HexMap | null = null;
   hexMapWithDoors: HexMap | null = null;
@@ -179,21 +179,21 @@ export class Editor {
     // });
 
     this.hexMap = generateHexTypesSingle({
-      gridSize: 30,
-      hexTypes: hexTypes,
+      gridSize: this.gridSize,
     });
 
-    this.hexMapWithDoors = connectAllRooms(this.hexMap, 30);
+    this.hexMapWithDoors = connectAllRooms(this.hexMap, this.gridSize);
 
-    this.renderPreview(30, this.hexMapWithDoors);
+    this.renderPreview(this.gridSize, this.hexMapWithDoors);
   }
 
   public renderHexMap(): void {
-    if (this.hexMap) this.renderPreview(30, this.hexMap);
+    if (this.hexMap) this.renderPreview(this.gridSize, this.hexMap);
   }
 
   public renderHexMapWithDoors(): void {
-    if (this.hexMapWithDoors) this.renderPreview(30, this.hexMapWithDoors);
+    if (this.hexMapWithDoors)
+      this.renderPreview(this.gridSize, this.hexMapWithDoors);
   }
 
   renderPreview(gridSize: number, hexTypes: HexMap): void {
@@ -218,7 +218,7 @@ export class Editor {
         hex,
         offsetX,
         offsetY,
-        25,
+        30,
         type,
         false,
         rotation,

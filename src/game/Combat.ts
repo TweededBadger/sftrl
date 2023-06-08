@@ -1,21 +1,49 @@
-import { loadWeaponsIcons } from "../components/WeaponIcon";
 import { AIPlayer } from "./AIPlayer";
 import { Player } from "./Player";
 
-export type Weapons = "CLEAVER" | "SWORD" | "SCISSORS" | "ROCK" | "HANDS";
+export type Weapons = "SWORD" | "HAMMER_2" | "TAZER" | "HAMMER_1" | "FIST";
 
 type WeaponAttributes = {
+  name: string;
   damage: number;
   speed: number;
   critChance: number;
 };
 export const weaponStats: Record<Weapons, WeaponAttributes> = {
-  CLEAVER: { damage: 20, speed: 0.6, critChance: 0.1 },
-  SWORD: { damage: 15, speed: 0.8, critChance: 0.3 },
-  SCISSORS: { damage: 10, speed: 1, critChance: 0.2 },
-  ROCK: { damage: 8, speed: 0.8, critChance: 0.5 },
-  HANDS: { damage: 5, speed: 1, critChance: 0.3 },
+  HAMMER_2: {
+    name: "SledgeHammer",
+    damage: 20,
+    speed: 0.6,
+    critChance: 0.1,
+  },
+  SWORD: {
+    name: "Sword",
+    damage: 15,
+    speed: 0.8,
+    critChance: 0.3,
+  },
+  TAZER: {
+    name: "Tazer",
+
+    damage: 10,
+    speed: 1,
+    critChance: 0.2,
+  },
+  HAMMER_1: {
+    name: "Hammer",
+    damage: 8,
+    speed: 0.8,
+    critChance: 0.5,
+  },
+  FIST: {
+    name: "PowerFist",
+    damage: 5,
+    speed: 1,
+    critChance: 0.3,
+  },
 };
+
+export const weapons = Object.keys(weaponStats) as Weapons[];
 
 interface PlayerState {
   player: Player | AIPlayer;

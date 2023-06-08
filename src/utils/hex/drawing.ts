@@ -2,17 +2,17 @@ import { Hex, HexType } from "../../game/Hex";
 import { SpriteInfo, SpriteManager } from "../../game/SpriteManager";
 import { HexRotation } from "../../game/Structure";
 
-const typeColors: Record<HexType, string> = {
-  GRASS: "#00D04E",
-  ROAD: "#808080",
-  SEA: "#0000FF",
-  WOODS: "#019437",
-  DEEP_WOODS: "#00451A",
-  SAND: "#FFFF00",
-  WALL: "#508050",
-  DOOR: "#FF00FF",
-  DEATH: "rgba(255, 0, 0, 0.5)",
-};
+// const typeColors: Record<HexType, string> = {
+//   GRASS: "#00D04E",
+//   ROAD: "#808080",
+//   SEA: "#0000FF",
+//   WOODS: "#019437",
+//   DEEP_WOODS: "#00451A",
+//   SAND: "#FFFF00",
+//   WALL: "#508050",
+//   DOOR: "#FF00FF",
+//   DEATH: "rgba(255, 0, 0, 0.5)",
+// };
 
 export function calculateHexPoints(
   centerX: number,
@@ -67,45 +67,54 @@ export function renderHex(
   const centerX = x + offsetX;
   const centerY = y + offsetY;
 
-  const points = calculateHexPoints(centerX, centerY, hexSize);
-  ctx.beginPath();
-
-  ctx.setLineDash([5, 10]);
-
-  ctx.lineWidth = 1;
-  ctx.moveTo(points[0].x, points[0].y);
-
-  for (let i = 1; i < points.length; i++) {
-    ctx.lineTo(points[i].x, points[i].y);
-  }
-
-  ctx.closePath();
-  ctx.fillStyle = greyOut
-    ? desaturateColor(typeColors[hexType], 0.9)
-    : typeColors[hexType];
-  ctx.fill();
-  ctx.strokeStyle = "black";
-  ctx.stroke();
-
   spriteManager.drawSprite(
     ctx,
+    "TILES",
     "BASE_TILE",
     centerX - hexSize,
     centerY - hexSize,
     hexSize * 2,
-    hexSize * 2
+    hexSize * 2,
+    0,
+    greyOut ? 0.5 : 0
   );
 
   if (hexType !== "EMPTY") {
     spriteManager.drawSprite(
       ctx,
+      "TILES",
       hexType,
       centerX - hexSize,
       centerY - hexSize,
       hexSize * 2,
       hexSize * 2,
-      rotation * 60
+      rotation * 60,
+
+      greyOut ? 0.5 : 0
     );
+  }
+
+  if (greyOut) {
+    const points = calculateHexPoints(centerX, centerY, hexSize);
+    ctx.beginPath();
+
+    ctx.setLineDash([5, 10]);
+
+    ctx.lineWidth = 0;
+    ctx.moveTo(points[0].x, points[0].y);
+
+    for (let i = 1; i < points.length; i++) {
+      ctx.lineTo(points[i].x, points[i].y);
+    }
+
+    ctx.closePath();
+    // ctx.fillStyle = greyOut
+    //   ? desaturateColor(typeColors[hexType], 0.9)
+    //   : typeColors[hexType];
+    ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+    ctx.fill();
+    // ctx.strokeStyle = "black";
+    // ctx.stroke();
   }
 
   if (debug) {
@@ -175,4 +184,68 @@ export function drawSprite(args: DrawSpriteArgs): void {
     width,
     height
   );
+}
+
+export function clearCanvas(
+  canvas: HTMLCanvasElement,
+  fillColor?: string
+): void {
+  const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
+
+  if (!fillColor) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    return;
+  }
+
+  ctx.fillStyle = fillColor;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+export function drawPath(
+  path: Hex[],
+  ctx: CanvasRenderingContext2D,
+  hexSize: number,
+  offsetX: number,
+  offsetY: number,
+  color: string,
+  lineWidth: number,
+  cost: number
+): void {
+  // Clear the canvas
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+  // Set the line style
+  ctx.strokeStyle = color;
+  ctx.lineWidth = lineWidth;
+
+  // Begin drawing the path
+  ctx.beginPath();
+
+  for (const [index, hex] of path.entries()) {
+    const { x, y } = hex.toPixel(hexSize);
+    const centerX = x + offsetX;
+    const centerY = y + offsetY;
+
+    // Move to the first point in the path
+    if (index === 0) {
+      ctx.moveTo(centerX, centerY);
+    } else {
+      ctx.lineTo(centerX, centerY);
+    }
+  }
+
+  // render the cost above the last hex
+  const lastHex = path[path.length - 1];
+  const { x, y } = lastHex.toPixel(hexSize);
+  const centerX = x + offsetX;
+  const centerY = y + offsetY - hexSize / 2;
+  ctx.fillStyle = "white";
+  ctx.font = `${Math.round(hexSize * 0.5)}px Arial`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  ctx.fillText(cost.toString(), centerX, centerY);
+
+  // Stroke the path
+  ctx.stroke();
 }

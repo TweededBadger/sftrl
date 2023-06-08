@@ -11,14 +11,14 @@ import { GrActions } from "react-icons/gr";
 import { IoPeople } from "react-icons/io5";
 import ActionButton from "./components/ActionButton";
 import WeaponIcon from "./components/WeaponIcon";
-import { Combat } from "./game/Combat";
+import { Combat, weaponStats } from "./game/Combat";
 import { CombatDisplay } from "./components/CombatDisplay";
 import { GameOver } from "./components/GameOver";
 
-
-import './index.css'
+import "./index.css";
 import { StartScreen } from "./components/StartScreen";
 import { useFullScreen } from "./hooks/useFullScreen";
+import SpriteCanvas from "./components/SingleSprite";
 
 type GameState = {
   numAlivePlayers: number;
@@ -34,7 +34,6 @@ type GameState = {
 // const main = new Main(50);
 
 function App() {
-
   const { ref, toggleFullScreen } = useFullScreen();
 
   const [gameState, setGameState] = useState<GameState>({
@@ -50,15 +49,23 @@ function App() {
     null
     // document.getElementById("hex-grid-canvas") as HTMLCanvasElement
   );
+  const canvas2 = useRef<HTMLCanvasElement>(
+    null
+    // document.getElementById("hex-grid-canvas") as HTMLCanvasElement
+  );
 
   useEffect(() => {
-    if (!canvas.current) return;
+    if (!canvas.current || !canvas2.current) return;
     if (canvas.current) {
       canvas.current.width = window.innerWidth;
       canvas.current.height = window.innerHeight;
     }
+    if (canvas2.current) {
+      canvas2.current.width = window.innerWidth;
+      canvas2.current.height = window.innerHeight;
+    }
     if (!main.current) {
-      main.current = new Main(canvas.current);
+      main.current = new Main(canvas.current, canvas2.current);
     }
     const handleCurrentState = (currentState: GameState) => {
       console.log(currentState);
@@ -72,6 +79,10 @@ function App() {
       if (canvas.current) {
         canvas.current.width = window.innerWidth;
         canvas.current.height = window.innerHeight;
+      }
+      if (canvas2.current) {
+        canvas2.current.width = window.innerWidth;
+        canvas2.current.height = window.innerHeight;
       }
       main.current?.render();
     };
@@ -94,69 +105,87 @@ function App() {
 
   return (
     <div className="App" ref={ref}>
-      {player && <><div className="left-panel">
-        <div>
-          <div>
-            <IoPeople />
-          </div>
-          {gameState.numAlivePlayers}
-        </div>
-        <div>
-          <div>
-            <FaClock />
-          </div>
-          {gameState.turnNumber}
-        </div>
-        <button onClick={() => main.current?.zoomIn()}>
-          <AiOutlineZoomIn />
-        </button>
-        <button onClick={() => main.current?.zoomOut()}>
-          <AiOutlineZoomOut />
-        </button>
-      </div>
-        <div className="right-panel">
-          <div>
+      {player && (
+        <>
+          <div className="left-panel">
             <div>
-              <FaHeart />
+              <div>
+                <IoPeople />
+              </div>
+              {gameState.numAlivePlayers}
             </div>
-            {player.health}
-          </div>
-          <div>
             <div>
-              <BsFillShieldFill />
+              <div>
+                <FaClock />
+              </div>
+              {gameState.turnNumber}
             </div>
-            {player.armour}
+            <button onClick={() => main.current?.zoomIn()}>
+              <AiOutlineZoomIn />
+            </button>
+            <button onClick={() => main.current?.zoomOut()}>
+              <AiOutlineZoomOut />
+            </button>
           </div>
-          <div>
-            <WeaponIcon weapon={player.currentWeapon} />
-          </div>
+          <div className="right-panel">
+            <div>
+              {main.current && main.current.spritesLoaded && (
+                <SpriteCanvas
+                  spriteManager={main.current.spriteManager}
+                  sheetId="ITEMS"
+                  spriteKey="HEALTH"
+                />
+              )}
+              {player.health}
+            </div>
+            <div>
+              {main.current && main.current.spritesLoaded && (
+                <SpriteCanvas
+                  spriteManager={main.current.spriteManager}
+                  sheetId="ITEMS"
+                  spriteKey="ARMOUR"
+                />
+              )}
+              {player.armour}
+            </div>
+            <div className="current-weapon">
+              <h2>Current Weapon</h2>
+              {main.current && main.current.spritesLoaded && (
+                <SpriteCanvas
+                  spriteManager={main.current.spriteManager}
+                  sheetId="WEAPONS"
+                  spriteKey={player.currentWeapon}
+                />
+              )}
+              <div>{weaponStats[player.currentWeapon].name}</div>
+            </div>
 
-          <div>
             <div>
-              <GrActions />
+              <h2>AP: {player.actionsPerTurn - player.actionsTaken}</h2>
             </div>
-            {player.actionsTaken}/{player.actionsPerTurn}
-          </div>
-          {player.availableActions.map((action) => (
-            <ActionButton
-              action={action}
-              key={action}
-              onClick={() => {
-                main.current?.performAction(action);
-              }}
-              highlight={
-                player.actionsTaken === player.actionsPerTurn &&
-                action === "END_TURN"
-              }
-            />
-          ))}
-        </div> </>}
+            {player.availableActions.map((action) => (
+              <ActionButton
+                action={action}
+                key={action}
+                onClick={() => {
+                  main.current?.performAction(action);
+                }}
+                highlight={
+                  player.actionsTaken === player.actionsPerTurn &&
+                  action === "END_TURN"
+                }
+              />
+            ))}
+          </div>{" "}
+        </>
+      )}
 
-      {gameState.currentCombat && (
+      {gameState.currentCombat && main.current && (
         <div className="combat-panel">
           <CombatDisplay
             combat={gameState.currentCombat}
             onCombatStep={() => main.current?.nextCombatStep()}
+            spriteManager={main.current.spriteManager}
           />
         </div>
       )}
@@ -177,12 +206,48 @@ function App() {
           <StartScreen
             position={gameState.numAlivePlayers}
             onStartNewGame={() => {
-              toggleFullScreen();
+              // toggleFullScreen();
               main.current?.reset();
             }}
           />
         </div>
       )}
+
+      <div className="end-turn-buttons">
+        {player &&
+          player.availableActions
+            .filter((action) => {
+              if (
+                action === "END_TURN" &&
+                player.actionsTaken !== player.actionsPerTurn
+              )
+                return false;
+
+              return true;
+            })
+            .map((action) => (
+              <ActionButton
+                action={action}
+                key={action}
+                onClick={() => {
+                  main.current?.performAction(action);
+                }}
+                highlight={
+                  player.actionsTaken === player.actionsPerTurn &&
+                  action === "END_TURN"
+                }
+              />
+            ))}
+      </div>
+
+      {/* {player && player.actionsTaken === player.actionsPerTurn && (
+        <ActionButton
+          className="end-turn-button"
+          action="END_TURN"
+          onClick={() => main.current?.performAction("END_TURN")}
+          highlight
+        />
+      )} */}
       {/* <h1>
         {gameState.numPlayers} {gameState.numAlivePlayers}
       </h1>
@@ -210,6 +275,13 @@ function App() {
       <canvas
         className="hex-grid-canvas"
         ref={canvas}
+        width="100%"
+        height="100%"
+      />
+      <canvas
+        className="hex-grid-canvas"
+        id="hex-grid-canvas-2"
+        ref={canvas2}
         width="100%"
         height="100%"
       />

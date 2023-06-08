@@ -5,50 +5,61 @@ export type SpriteInfo = {
   height: number;
 };
 
-export class SpriteManager {
-  private spriteSheet: HTMLImageElement | null;
-  private spriteInfo: { [key: string]: SpriteInfo };
+type SpriteSheetInfo = {
+  sheetId: string;
+  src: string;
+  spriteInfo: { [key: string]: SpriteInfo };
+};
 
-  constructor(
-    spriteSheetSrc: string,
-    spriteInfo: { [key: string]: SpriteInfo },
-    onLoad?: () => void
-  ) {
-    this.spriteInfo = spriteInfo;
-    this.spriteSheet = null;
-    this.loadSpriteSheet(spriteSheetSrc, onLoad);
+export class SpriteManager {
+  private spriteSheets: Map<string, HTMLImageElement>;
+  private spriteInfo: Map<string, SpriteInfo>;
+
+  constructor(spriteSheetInfos: SpriteSheetInfo[], onLoad?: () => void) {
+    this.spriteSheets = new Map();
+    this.spriteInfo = new Map();
+
+    const loadPromises = spriteSheetInfos.map((info) =>
+      this.loadSpriteSheet(info.sheetId, info.src, info.spriteInfo)
+    );
+
+    Promise.all(loadPromises).then(() => {
+      if (onLoad) {
+        onLoad();
+      }
+    });
   }
 
   private async loadSpriteSheet(
+    sheetId: string,
     src: string,
-    onLoad?: () => void
+    spriteInfo: { [key: string]: SpriteInfo }
   ): Promise<void> {
     return new Promise<void>((resolve) => {
       const image = new Image();
       image.src = src;
       image.onload = () => {
-        this.spriteSheet = image;
+        this.spriteSheets.set(sheetId, image);
+        Object.entries(spriteInfo).forEach(([key, info]) => {
+          this.spriteInfo.set(key, info);
+        });
         resolve();
-        if (onLoad) {
-          onLoad();
-        }
       };
     });
   }
 
   public drawSprite(
     ctx: CanvasRenderingContext2D,
+    sheetId: string, // optional, used to specify the sprite sheet
     spriteKey: string,
     x: number,
     y: number,
     width: number,
     height: number,
-    rotation: number = 0 // in degrees
+    rotation: number = 0, // in degrees
+    desaturationAmount: number = 0 // between 0 and 1
   ): void {
-    if (!this.spriteSheet) {
-      return;
-    }
-    const sprite = this.spriteInfo[spriteKey];
+    const sprite = this.spriteInfo.get(spriteKey);
 
     if (!sprite) {
       console.error(`Sprite not found: ${spriteKey}`);
@@ -65,19 +76,59 @@ export class SpriteManager {
     const rotationInRadians = (rotation * Math.PI) / 180;
     ctx.rotate(rotationInRadians);
 
-    // Draw the image, but offset its position by half its width and height to account for the previous translate
-    ctx.drawImage(
-      this.spriteSheet,
-      sprite.x,
-      sprite.y,
-      sprite.width,
-      sprite.height,
-      -width / 2,
-      -height / 2,
-      width,
-      height
-    );
+    const spriteSheet = this.spriteSheets.get(sheetId); // default to the first sprite sheet
 
+    if (!spriteSheet) {
+      console.error(`Sprite sheet not found: ${sheetId}`);
+      return;
+    }
+
+    // If desaturation is enabled, draw the image to a temporary canvas and manipulate the pixel data
+    if (desaturationAmount > 0 && false) {
+      // const tempCanvas = document.createElement("canvas");
+      // tempCanvas.width = sprite.width;
+      // tempCanvas.height = sprite.height;
+      // const tempCtx = tempCanvas.getContext("2d");
+      // if (!tempCtx) {
+      //   return;
+      // }
+      // tempCtx.drawImage(
+      //   spriteSheet,
+      //   sprite.x,
+      //   sprite.y,
+      //   sprite.width,
+      //   sprite.height,
+      //   0,
+      //   0,
+      //   sprite.width,
+      //   sprite.height
+      // );
+      // const imageData = tempCtx.getImageData(0, 0, sprite.width, sprite.height);
+      // const data = imageData.data;
+      // for (let i = 0; i < data.length; i += 4) {
+      //   const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+      //   data[i] = data[i] * (1 - desaturationAmount) + avg * desaturationAmount; // red
+      //   data[i + 1] =
+      //     data[i + 1] * (1 - desaturationAmount) + avg * desaturationAmount; // green
+      //   data[i + 2] =
+      //     data[i + 2] * (1 - desaturationAmount) + avg * desaturationAmount; // blue
+      // }
+      // tempCtx.putImageData(imageData, 0, 0);
+      // ctx.drawImage(tempCanvas, -width / 2, -height / 2, width, height);
+    } else {
+      // Draw the image without desaturation
+      ctx.drawImage(
+        spriteSheet,
+        sprite.x,
+        sprite.y,
+        sprite.width,
+        sprite.height,
+        -width / 2,
+        -height / 2,
+        width,
+        height
+      );
+    }
     // Restore the unrotated context state
     ctx.restore();
   }

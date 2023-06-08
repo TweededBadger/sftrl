@@ -4,12 +4,17 @@
     align-items: center;
     justify-content: center;
     padding: 1rem;
-    background-color: #f8f8f8;
+    background-color:black;
     border-radius: 5px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     width: 100%;
-    max-width: 400px;
     margin: 0 auto;
+  }
+
+  .game-over img {
+    width: 100%;
+    max-width: 1000px;
+    margin-bottom: 1rem;
   }
   
   .game-over-message {

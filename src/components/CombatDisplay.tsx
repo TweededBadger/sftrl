@@ -3,16 +3,20 @@ import { BsFillShieldFill } from "react-icons/bs";
 import { FaHeart } from "react-icons/fa";
 import WeaponIcon from "./WeaponIcon";
 import styles from "./CombatDisplay.module.css";
-import { Combat } from "../game/Combat";
+import { Combat, weaponStats } from "../game/Combat";
+import SpriteCanvas from "./SingleSprite";
+import { SpriteManager } from "../game/SpriteManager";
 
 interface CombatDisplayProps {
   combat: Combat;
+  spriteManager: SpriteManager;
   onCombatStep: () => void;
 }
 
 export const CombatDisplay: React.FC<CombatDisplayProps> = ({
   combat,
   onCombatStep,
+  spriteManager,
 }) => {
   const actionsContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -34,8 +38,14 @@ export const CombatDisplay: React.FC<CombatDisplayProps> = ({
           <FaHeart /> {Math.round(state.health)}
         </div>
         <div className={styles["player-stat"]}>
-          <WeaponIcon weapon={state.player.currentWeapon} />
+          <SpriteCanvas
+            spriteManager={spriteManager}
+            sheetId="WEAPONS"
+            spriteKey={state.player.currentWeapon}
+          />
         </div>
+
+        <h2>{weaponStats[state.player.currentWeapon].name}</h2>
       </div>
     ));
   };

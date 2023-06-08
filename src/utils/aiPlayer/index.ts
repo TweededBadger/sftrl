@@ -42,7 +42,6 @@ export function getPlayerInViewDistance(
       otherPlayer.id !== player.id &&
       visibleHexes.has(otherPlayer.hex.toString()) &&
       !player.friends.includes(otherPlayer.id)
-
     ) {
       minDistance = distance;
       closestPlayer = otherPlayer;
@@ -55,14 +54,13 @@ export type GetItemsInViewDistanceArgs = {
   player: AIPlayer;
   items: Map<string, ItemInfo>;
   viewDistance: number;
-  hexTypes: Map<string, HexType>;
   hexGrid: HexGrid;
 };
 
 export function getItemsInViewDistance(
   args: GetItemsInViewDistanceArgs
 ): { hex: Hex; itemInfo: ItemInfo }[] {
-  const { player, items, viewDistance, hexTypes, hexGrid } = args;
+  const { player, items, viewDistance, hexGrid } = args;
 
   // Calculate visible hexes for the given player
   const visibleHexes = player.visibleHexes;
@@ -140,10 +138,10 @@ function getItemPriority(itemType: ItemType): number {
       return 2;
     case "ARMOUR":
       return 3;
-    case "ROCK":
-    case "SCISSORS":
-    case "CLEAVER":
+    case "HAMMER_1":
+    case "HAMMER_2":
     case "SWORD":
+    case "TAZER":
       return 4;
     default:
       return 5;
@@ -172,14 +170,17 @@ export function determineTargetPosition(
     hexTypes,
     hexGrid,
     gridSize,
-    deathMap
+    deathMap,
   } = args;
 
   let targetPosition = player.targetHex;
 
   const targetHexType = hexTypes.get(targetPosition.toString());
   const isTargetReached = player.hex.equals(targetPosition);
-  const isTargetUnreachable = (targetHexType && movementCosts[targetHexType] > 4) ||  !targetHexType || deathMap.get(targetPosition.toString());
+  const isTargetUnreachable =
+    (targetHexType && movementCosts[targetHexType.type] > 4) ||
+    !targetHexType ||
+    deathMap.get(targetPosition.toString());
 
   let visiblePlayer = getPlayerInViewDistance({
     player,
@@ -188,16 +189,18 @@ export function determineTargetPosition(
     hexTypes,
     hexGrid,
   });
-  if (visiblePlayer && deathMap.get(visiblePlayer.hex.toString())) visiblePlayer = null;
+  if (visiblePlayer && deathMap.get(visiblePlayer.hex.toString()))
+    visiblePlayer = null;
 
   let itemsInViewDistance = getItemsInViewDistance({
     player,
     items,
     viewDistance,
-    hexTypes,
     hexGrid,
   });
-  itemsInViewDistance = itemsInViewDistance.filter(item => !deathMap.get(item.hex.toString()));
+  itemsInViewDistance = itemsInViewDistance.filter(
+    (item) => !deathMap.get(item.hex.toString())
+  );
 
   const targetItem = getTargetItem(itemsInViewDistance, player);
 
@@ -208,7 +211,6 @@ export function determineTargetPosition(
       const shouldFollow = shouldPlayerFollow({
         player,
         visiblePlayer,
-        hexTypes,
       });
 
       if (shouldFollow) {
@@ -220,11 +222,14 @@ export function determineTargetPosition(
           viewDistance: viewDistance,
           avoidHex: visiblePlayer.hex,
           hexTypes: hexTypes,
-          deathMap
+          deathMap,
         });
       }
     } else if (player.lastSeenPlayer) {
-      if (player.hex.equals(player.lastSeenPlayer) || deathMap.get(player.lastSeenPlayer.toString())) {
+      if (
+        player.hex.equals(player.lastSeenPlayer) ||
+        deathMap.get(player.lastSeenPlayer.toString())
+      ) {
         player.lastSeenPlayer = undefined;
       } else {
         targetPosition = player.lastSeenPlayer;
@@ -234,7 +239,7 @@ export function determineTargetPosition(
         startPosition: player.hex,
         viewDistance: viewDistance,
         hexTypes: hexTypes,
-        deathMap
+        deathMap,
       });
       // targetPosition = getRandomWalkableHexTowardsLeastExploredArea({
       //   player: player,
@@ -250,20 +255,21 @@ export function determineTargetPosition(
   return targetPosition;
 }
 
-
 export function shouldFormAllianceWithPlayer(args: {
   player: Player;
   visiblePlayer: Player;
 }): boolean {
-  const { player, visiblePlayer, } = args;
+  const { player, visiblePlayer } = args;
 
   if (player.traits.attack < 0.4 && visiblePlayer.traits.attack < 0.4) {
-      if (!player.friends.includes(visiblePlayer.id)) player.friends.push(visiblePlayer.id);
-      if (!visiblePlayer.friends.includes(player.id)) visiblePlayer.friends.push(player.id);
+    if (!player.friends.includes(visiblePlayer.id))
+      player.friends.push(visiblePlayer.id);
+    if (!visiblePlayer.friends.includes(player.id))
+      visiblePlayer.friends.push(player.id);
 
-      console.log(`${player.id} Formed alliance with ${visiblePlayer.id}`);
+    console.log(`${player.id} Formed alliance with ${visiblePlayer.id}`);
 
-      return true;
+    return true;
   }
   return false;
 }
@@ -271,9 +277,8 @@ export function shouldFormAllianceWithPlayer(args: {
 function shouldPlayerFollow(args: {
   player: AIPlayer;
   visiblePlayer: Player;
-  hexTypes: Map<string, HexType>;
 }): boolean {
-  const { player, visiblePlayer, hexTypes } = args;
+  const { player, visiblePlayer } = args;
 
   const playerAttack = player.traits.attack;
   const playerHealth = player.health;
@@ -330,7 +335,7 @@ interface GetRandomWalkableHexInViewDistanceArgs {
   avoidHex?: Hex;
   viewDistance: number;
   hexTypes: HexMap;
-  
+
   deathMap: Map<string, boolean>;
 }
 
@@ -359,7 +364,7 @@ export function getRandomWalkableHexInViewDistance(
     );
 
     const candidateType = hexTypes.get(targetPosition.toString());
-    isValidTarget = !!candidateType && movementCosts[candidateType] < 4;
+    isValidTarget = !!candidateType && movementCosts[candidateType.type] < 4;
 
     if (isValidTarget && avoidDirection) {
       const candidateDirection = targetPosition
@@ -369,7 +374,9 @@ export function getRandomWalkableHexInViewDistance(
       isValidTarget = directionDotProduct <= 0;
     }
 
-    isValidTarget = isValidTarget ? !deathMap.get(targetPosition.toString()) : false;
+    isValidTarget = isValidTarget
+      ? !deathMap.get(targetPosition.toString())
+      : false;
 
     attempts++;
     if (attempts >= 100) {
@@ -422,7 +429,8 @@ export function getRandomWalkableHexTowardsLeastExploredArea(
     for (let i = 1; i <= maxSearchDistance; i++) {
       const candidateHex = startPosition.add(direction.scale(i)).round();
       const candidateType = hexTypes.get(candidateHex.toString());
-      let isValidTarget = !!candidateType && movementCosts[candidateType] < 4;
+      let isValidTarget =
+        !!candidateType && movementCosts[candidateType.type] < 4;
       if (deathMap.get(candidateHex.toString())) isValidTarget = false;
 
       if (isValidTarget && !player.visibilityMap.get(candidateHex.toString())) {
@@ -436,11 +444,9 @@ export function getRandomWalkableHexTowardsLeastExploredArea(
         startPosition,
         viewDistance: 5,
         hexTypes,
-        deathMap
+        deathMap,
       });
     }
-
-    
 
     return targetPosition;
   } else {
@@ -449,7 +455,7 @@ export function getRandomWalkableHexTowardsLeastExploredArea(
       startPosition,
       viewDistance: 5,
       hexTypes,
-      deathMap
+      deathMap,
     });
   }
 }

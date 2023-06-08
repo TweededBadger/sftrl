@@ -8,7 +8,12 @@ import { Editor, EditorState } from "./game/Editor";
 import StructurePreview from "./components/StructurePreview";
 import "./HexEditor.css";
 import { exportPatterns, importPatterns } from "./utils/procGen/patterns";
-import { spriteInfo } from "./game/HexGrid";
+import {
+  spriteInfoCharacters,
+  spriteInfoTiles,
+  spriteItems,
+  spriteWeapons,
+} from "./game/HexGrid";
 import { SpriteManager } from "./game/SpriteManager";
 import { hexRotations } from "./game/Structure";
 
@@ -18,7 +23,31 @@ const HexEditor: React.FC = () => {
   const editorRef = useRef<Editor | null>(null);
 
   const spriteManager = useRef(
-    new SpriteManager("images/ss.png", spriteInfo, () => {})
+    new SpriteManager(
+      [
+        {
+          sheetId: "TILES",
+          spriteInfo: spriteInfoTiles,
+          src: "images/ss_tiles.png",
+        },
+        {
+          sheetId: "WEAPONS",
+          spriteInfo: spriteWeapons,
+          src: "images/ss_weapons.png",
+        },
+        {
+          sheetId: "ITEMS",
+          spriteInfo: spriteItems,
+          src: "images/ss_items.png",
+        },
+        {
+          sheetId: "CHARACTERS",
+          spriteInfo: spriteInfoCharacters,
+          src: "images/ss_characters.png",
+        },
+      ],
+      () => {}
+    )
   );
 
   const [editorState, setEditorState] = useState<EditorState>({

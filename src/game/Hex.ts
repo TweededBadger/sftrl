@@ -1,19 +1,14 @@
 // Add the HexType enum
 
+import { Weapons } from "./Combat";
+
 const house = [
   { type: "WALL", position: { q: 0, r: -1 } },
   { type: "DOOR", position: { q: 1, r: -1 } },
   // etc
 ];
 
-export type ItemType =
-  | "HEALTH"
-  | "CHEST"
-  | "ROCK"
-  | "SCISSORS"
-  | "CLEAVER"
-  | "SWORD"
-  | "ARMOUR";
+export type ItemType = "HEALTH" | "CHEST" | "ARMOUR" | Weapons;
 
 export type SpriteType = ItemType | HexType | "PLAYER" | "ENEMY" | "BASE_TILE";
 
@@ -35,10 +30,11 @@ export type ItemInfo = {
 export const itemAmounts: Record<ItemType, number> = {
   HEALTH: 20,
   CHEST: 0,
-  ROCK: 10,
-  SCISSORS: 10,
-  CLEAVER: 5,
-  SWORD: 3,
+  FIST: 0,
+  HAMMER_1: 10,
+  SWORD: 5,
+  TAZER: 10,
+  HAMMER_2: 3,
   ARMOUR: 10,
 };
 
@@ -57,9 +53,17 @@ export const hexTypes: HexType[] = [
   "WINDOW",
   // "DOOR",
   "EMPTY",
+  "WALL_CORNER_THREE_1",
 ];
 
-export const blocksLineOfSite: HexType[] = ["DEEP_WOODS", "WALL", "DOOR"];
+export const blocksLineOfSite: HexType[] = [
+  "DEEP_WOODS",
+  "WALL",
+  "DOOR",
+  "WALL_END",
+  "WALL_CORNER",
+  "WALL_CORNER_THREE",
+];
 
 export const allowStructure: HexType[] = ["GRASS", "WOODS", "ROAD"];
 export const walkAbleHexTypes: HexType[] = ["EMPTY", "DOOR"];
@@ -74,6 +78,13 @@ export const movementCosts: Record<HexType, number> = {
   WALL: 10000,
   DOOR: 1,
   DEATH: 10000,
+  EMPTY: 1,
+  WALL_END: 10000,
+  WALL_CORNER: 10000,
+  WALL_CORNER_THREE: 10000,
+  WALL_CORNER_THREE_1: 10000,
+  WINDOW: 10000,
+  WALL_CORNER_TIGHT: 10000,
 };
 export const hexDirections: [number, number][] = [
   [1, 0],
@@ -97,6 +108,7 @@ export type HexType =
   | "WALL_CORNER_TIGHT"
   | "WALL_CORNER"
   | "WALL_CORNER_THREE"
+  | "WALL_CORNER_THREE_1"
   | "WINDOW"
   | "DEATH"
   | "EMPTY";

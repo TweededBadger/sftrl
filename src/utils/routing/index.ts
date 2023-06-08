@@ -13,7 +13,7 @@ export function getRandomWalkableHex(hexTypes: HexMap, gridSize: number): Hex {
     const candidateHex = new Hex(randomQ, randomR);
     const candidateType = hexTypes.get(candidateHex.toString());
 
-    if (!!candidateType && movementCosts[candidateType] <= 2) {
+    if (!!candidateType && movementCosts[candidateType.type] <= 2) {
       randomHex = candidateHex;
     }
   }
@@ -54,16 +54,13 @@ export function findCheapestPath(
 
     for (const neighbor of current.neighbors()) {
       let hexType = hexTypes.get(neighbor.toString());
-      if (avoidHexes?.has(neighbor.toString())) hexType = 'WALL';
+      if (avoidHexes?.has(neighbor.toString()))
+        hexType = { type: "WALL", rotation: 0 };
       if (!hexType) continue;
       const costSoFarNeighbour = costSoFar.get(neighbor.toString()) || 0;
       const newCost =
-        costSoFar.get(current.toString())! +
-        movementCosts[hexType];
-      if (
-        !costSoFar.has(neighbor.toString()) ||
-        newCost < costSoFarNeighbour
-      ) {
+        costSoFar.get(current.toString())! + movementCosts[hexType.type];
+      if (!costSoFar.has(neighbor.toString()) || newCost < costSoFarNeighbour) {
         costSoFar.set(neighbor.toString(), newCost);
         cameFrom.set(neighbor.toString(), current);
         frontier.enqueue({ hex: neighbor, cost: newCost }, newCost);
@@ -139,7 +136,7 @@ export function movePlayerAlongPath(
 
     const nextHexType = hexTypes.get(nextHex.toString());
     if (!nextHexType) break;
-    const nextHexCost = movementCosts[nextHexType];
+    const nextHexCost = movementCosts[nextHexType.type];
 
     if (
       player.actionsPerTurn - actionsTaken < nextHexCost ||

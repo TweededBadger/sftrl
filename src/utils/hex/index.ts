@@ -1,18 +1,20 @@
 import { blocksLineOfSite, Hex, HexType } from "../../game/Hex";
+import { HexMap } from "../types";
 import { iterateGrid } from "./drawing";
 
 interface AxialToCubeArgs {
   hex: Hex;
 }
 
-export function axialToCube(args: AxialToCubeArgs): { x: number; y: number; z: number } {
+export function axialToCube(
+  args: AxialToCubeArgs
+): { x: number; y: number; z: number } {
   const { hex } = args;
   const x = hex.q;
   const z = hex.r;
   const y = -x - z;
   return { x, y, z };
 }
-
 
 interface HexToMatrixArgs {
   hex: Hex;
@@ -39,58 +41,63 @@ export function matrixToHex(args: MatrixToHexArgs): Hex {
   return new Hex(q, r);
 }
 
-
-
 export function calculateVisibleHexes(
-    playerHex: Hex,
-    viewDistance: number,
-    hexTypes: Map<string, HexType>
-  ): Set<string> {
-    const visibleHexes = new Set<string>();
+  playerHex: Hex,
+  viewDistance: number,
+  hexTypes: HexMap
+): Set<string> {
+  const visibleHexes = new Set<string>();
 
-    // Add the player's hex to the visible hexes
-    visibleHexes.add(playerHex.toString());
+  // Add the player's hex to the visible hexes
+  visibleHexes.add(playerHex.toString());
 
-    const angleStep = 360/(6*7);
+  const angleStep = 360 / (6 * 7);
 
-    for (let angle = 0; angle < 360; angle += angleStep) {
-      const dx = Math.cos((angle * Math.PI) / 180);
-      const dy = Math.sin((angle * Math.PI) / 180);
+  for (let angle = 0; angle < 360; angle += angleStep) {
+    const dx = Math.cos((angle * Math.PI) / 180);
+    const dy = Math.sin((angle * Math.PI) / 180);
 
-      let currentHex = playerHex;
+    let currentHex = playerHex;
 
-      for (let distance = 0; distance <= viewDistance + 1; distance = distance + 0.5) {
-        const x = playerHex.q + dx * distance;
-        const y = playerHex.r + dy * distance;
-        const z = -(x + y);
-        const candidateHex = Hex.round(new Hex(x, y));
+    for (
+      let distance = 0;
+      distance <= viewDistance + 1;
+      distance = distance + 0.5
+    ) {
+      const x = playerHex.q + dx * distance;
+      const y = playerHex.r + dy * distance;
+      const z = -(x + y);
+      const candidateHex = Hex.round(new Hex(x, y));
 
-        if (!currentHex.equals(candidateHex)) {
-          currentHex = candidateHex;
+      if (!currentHex.equals(candidateHex)) {
+        currentHex = candidateHex;
 
-          const hexKey = currentHex.toString();
-          const hexType = hexTypes.get(hexKey);
+        const hexKey = currentHex.toString();
+        const hexType = hexTypes.get(hexKey);
 
-          visibleHexes.add(hexKey);
+        visibleHexes.add(hexKey);
 
-          if (hexType && blocksLineOfSite.includes(hexType)) {
-            break;
-          }
+        if (hexType && blocksLineOfSite.includes(hexType.type)) {
+          break;
         }
       }
     }
-
-    return visibleHexes;
   }
 
+  return visibleHexes;
+}
 
-  export function populateDeathHexMap(center: Hex, radius: number, gridSize: number): Map<string, boolean> {
-    const deathHexMap = new Map<string, boolean>();
-  
-    for (const hex of iterateGrid(gridSize)) {
-        const isInZone = center.distance(hex) > radius;
-        deathHexMap.set(hex.toString(), isInZone);
-    }
+export function populateDeathHexMap(
+  center: Hex,
+  radius: number,
+  gridSize: number
+): Map<string, boolean> {
+  const deathHexMap = new Map<string, boolean>();
 
-    return deathHexMap;
+  for (const hex of iterateGrid(gridSize)) {
+    const isInZone = center.distance(hex) > radius;
+    deathHexMap.set(hex.toString(), isInZone);
   }
+
+  return deathHexMap;
+}

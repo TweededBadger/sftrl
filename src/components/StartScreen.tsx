@@ -12,6 +12,7 @@ export const StartScreen: React.FC<StartScreenProps> = ({
 }) => {
   return (
     <div className={styles["game-over"]}>
+      <img src="/start_screen.jpg" />
       <button className={styles["new-game-button"]} onClick={onStartNewGame}>
         Start New Game
       </button>
