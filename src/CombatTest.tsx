@@ -38,7 +38,7 @@ const CombatTest = () => {
       combat.current = new Combat({
         app: pixiApp.current,
         characters: [character1, character2],
-        scale: 1,
+        scale: 3,
       });
     }
   }, []);
